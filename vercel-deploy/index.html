@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Student PDF Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#080c14;
+    --surface:#0d1526;
+    --surface2:#111d35;
+    --border:#1e3a5f;
+    --accent:#2563eb;
+    --accent2:#3b82f6;
+    --accent-glow:rgba(37,99,235,.35);
+    --ok:#10b981;
+    --err:#ef4444;
+    --warn:#f59e0b;
+    --text:#e2e8f0;
+    --muted:#64748b;
+    --mono:  'Space Mono', monospace;
+    --sans:  'Sora', sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans)}
+
+  /* ── noise grain overlay ── */
+  body::before{
+    content:'';
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity:.4;
+  }
+  /* ── grid bg lines ── */
+  body::after{
+    content:'';
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(37,99,235,.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(37,99,235,.04) 1px,transparent 1px);
+    background-size:48px 48px;
+  }
+
+  .wrapper{
+    position:relative;z-index:1;
+    min-height:100vh;
+    display:grid;
+    grid-template-rows:auto 1fr auto;
+    max-width:1100px;margin:0 auto;padding:0 24px;
+  }
+
+  /* ── Header ── */
+  header{
+    padding:32px 0 24px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--border);
+  }
+  .logo{display:flex;align-items:center;gap:14px}
+  .logo-icon{
+    width:44px;height:44px;
+    background:linear-gradient(135deg,var(--accent),#1d4ed8);
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 24px var(--accent-glow);
+    font-size:22px;
+  }
+  .logo-text h1{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+  .logo-text p{font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-top:2px}
+  .status-pill{
+    display:flex;align-items:center;gap:8px;
+    font-size:.72rem;font-family:var(--mono);
+    background:var(--surface);border:1px solid var(--border);
+    padding:7px 14px;border-radius:100px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);animation:pulse 1.4s infinite}
+  .dot.ok{background:var(--ok);animation:none}
+  .dot.err{background:var(--err);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── Main content ── */
+  main{padding:40px 0;display:flex;flex-direction:column;gap:28px}
+
+  /* ── Cards ── */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:28px 32px;
+    position:relative;overflow:hidden;
+  }
+  .card::before{
+    content:'';
+    position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent2),transparent);
+    opacity:.5;
+  }
+  .card-title{
+    font-size:.7rem;font-family:var(--mono);
+    color:var(--accent2);text-transform:uppercase;letter-spacing:.12em;
+    margin-bottom:18px;
+  }
+
+  /* ── Drop zone ── */
+  .drop-zone{
+    border:2px dashed var(--border);
+    border-radius:12px;
+    padding:52px 32px;
+    text-align:center;
+    cursor:pointer;
+    transition:all .25s;
+    position:relative;
+  }
+  .drop-zone:hover,.drop-zone.drag-over{
+    border-color:var(--accent);
+    background:rgba(37,99,235,.06);
+    box-shadow:0 0 32px var(--accent-glow);
+  }
+  .drop-zone input[type=file]{
+    position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+  }
+  .drop-icon{font-size:3rem;margin-bottom:16px;display:block}
+  .drop-zone h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+  .drop-zone p{font-size:.83rem;color:var(--muted)}
+  .file-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(37,99,235,.15);border:1px solid var(--accent);
+    color:var(--accent2);border-radius:100px;
+    padding:6px 16px;font-size:.8rem;font-family:var(--mono);
+    margin-top:14px;
+  }
+
+  /* ── Config row ── */
+  .config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .field label{display:block;font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:7px}
+  .field input,.field select{
+    width:100%;background:var(--surface2);
+    border:1px solid var(--border);border-radius:8px;
+    padding:10px 14px;color:var(--text);font-family:var(--sans);font-size:.88rem;
+    outline:none;transition:border-color .2s,box-shadow .2s;
+  }
+  .field input:focus,.field select:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-glow);
+  }
+
+  /* ── Action button ── */
+  .btn-generate{
+    width:100%;padding:16px;
+    background:linear-gradient(135deg,var(--accent) 0%,#1d4ed8 100%);
+    border:none;border-radius:12px;
+    color:#fff;font-family:var(--sans);font-size:1rem;font-weight:700;
+    cursor:pointer;letter-spacing:.01em;
+    position:relative;overflow:hidden;
+    transition:transform .15s,box-shadow .15s;
+    box-shadow:0 4px 24px var(--accent-glow);
+  }
+  .btn-generate:hover:not(:disabled){
+    transform:translateY(-2px);
+    box-shadow:0 8px 32px var(--accent-glow);
+  }
+  .btn-generate:active:not(:disabled){transform:translateY(0)}
+  .btn-generate:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn-generate .spinner{
+    display:none;width:18px;height:18px;
+    border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:spin .7s linear infinite;
+    margin:0 auto;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Progress bar ── */
+  .progress-wrap{margin-top:6px;display:none}
+  .progress-track{
+    height:4px;background:var(--surface2);border-radius:100px;overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent),var(--ok));
+    width:0%;transition:width .4s ease;border-radius:100px;
+  }
+  .progress-label{
+    font-size:.72rem;font-family:var(--mono);color:var(--muted);
+    margin-top:6px;text-align:right;
+  }
+
+  /* ── Log panel ── */
+  .log-panel{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:16px;
+    font-family:var(--mono);font-size:.78rem;line-height:1.7;
+    max-height:200px;overflow-y:auto;
+    display:none;
+  }
+  .log-panel::-webkit-scrollbar{width:4px}
+  .log-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .log-line{display:flex;gap:10px}
+  .log-time{color:var(--muted)}
+  .log-info{color:var(--accent2)}
+  .log-ok{color:var(--ok)}
+  .log-err{color:var(--err)}
+  .log-warn{color:var(--warn)}
+
+  /* ── Result cards grid ── */
+  .results-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:16px;
+    margin-top:4px;
+  }
+  .pdf-card{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:12px;padding:18px 20px;
+    display:flex;flex-direction:column;gap:10px;
+    transition:border-color .2s,box-shadow .2s;
+    animation:fadeUp .4s ease both;
+  }
+  .pdf-card:hover{border-color:var(--ok);box-shadow:0 0 20px rgba(16,185,129,.12)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .pdf-card-header{display:flex;align-items:center;gap:10px}
+  .pdf-icon{
+    width:36px;height:36px;background:rgba(16,185,129,.15);
+    border:1px solid var(--ok);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+  }
+  .pdf-name{font-weight:700;font-size:.9rem}
+  .pdf-enroll{font-size:.72rem;font-family:var(--mono);color:var(--muted)}
+  .pdf-path{
+    font-size:.7rem;font-family:var(--mono);color:var(--muted);
+    background:var(--bg);border-radius:6px;padding:6px 10px;
+    word-break:break-all;
+  }
+  .pdf-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(16,185,129,.12);border:1px solid var(--ok);
+    color:var(--ok);border-radius:100px;
+    padding:3px 10px;font-size:.68rem;font-family:var(--mono);
+    width:fit-content;
+  }
+
+  /* ── Alert banners ── */
+  .alert{
+    border-radius:10px;padding:14px 18px;
+    font-size:.85rem;line-height:1.6;
+    border-left:3px solid;display:none;
+  }
+  .alert-err{background:rgba(239,68,68,.1);border-color:var(--err);color:#fca5a5}
+  .alert-ok{background:rgba(16,185,129,.1);border-color:var(--ok);color:#6ee7b7}
+
+  /* ── Stats row ── */
+  .stats-row{display:flex;gap:16px;flex-wrap:wrap}
+  .stat-box{
+    flex:1;min-width:140px;
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:14px 18px;
+  }
+  .stat-val{font-size:1.8rem;font-weight:800;line-height:1}
+  .stat-val.green{color:var(--ok)}
+  .stat-val.blue{color:var(--accent2)}
+  .stat-label{font-size:.7rem;font-family:var(--mono);color:var(--muted);margin-top:5px}
+
+  /* ── Reset btn ── */
+  .btn-reset{
+    width:100%;padding:11px;
+    background:transparent;border:1px solid var(--border);border-radius:10px;
+    color:var(--muted);font-family:var(--sans);font-size:.88rem;cursor:pointer;
+    transition:all .2s;
+  }
+  .btn-reset:hover{border-color:var(--accent2);color:var(--text)}
+
+  /* ── Directory buttons ── */
+  .btn-directory{
+    padding:10px 16px;
+    background:linear-gradient(135deg,var(--accent2),#1d4ed8);
+    border:none;border-radius:8px;
+    color:#fff;font-family:var(--sans);font-size:.85rem;font-weight:600;
+    cursor:pointer;transition:all .2s;
+    box-shadow:0 2px 12px rgba(37,99,235,.3);
+  }
+  .btn-directory:hover{
+    transform:translateY(-1px);
+    box-shadow:0 4px 16px rgba(37,99,235,.4);
+  }
+  .btn-directory:active{transform:translateY(0)}
+
+  /* ── Preview btn ── */
+  .btn-preview{
+    padding:10px 16px;
+    background:linear-gradient(135deg,var(--warn),#d97706);
+    border:none;border-radius:8px;
+    color:#fff;font-family:var(--sans);font-size:.85rem;font-weight:600;
+    cursor:pointer;transition:all .2s;
+    box-shadow:0 2px 12px rgba(245,158,11,.3);
+  }
+  .btn-preview:hover{
+    transform:translateY(-1px);
+    box-shadow:0 4px 16px rgba(245,158,11,.4);
+  }
+  .btn-preview:active{transform:translateY(0)}
+
+/* ── Interactive Elements ── */
+.btn-browse { background:var(--accent); color:white; border:none; padding:12px 24px; border-radius:8px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.3s ease; margin-top:16px; box-shadow:0 4px 6px rgba(99,102,241,0.2); }
+.btn-browse:hover { transform:translateY(-2px); box-shadow:0 6px 12px rgba(99,102,241,0.3); }
+.remove-file { background:var(--err); color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:0.7rem; margin-left:8px; transition:all 0.3s ease; }
+.remove-file:hover { transform:scale(1.1); }
+.drop-content { transition:all 0.3s ease; }
+.drop-zone:hover .drop-content { transform:scale(1.02); }
+.drop-zone.dragover { background:var(--surface2); border-color:var(--accent); }
+.drop-zone.dragover .drop-content { transform:scale(1.05); }
+.progress-overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; border-radius:12px; }
+.progress-content { text-align:center; color:white; }
+.progress-spinner { width:40px; height:40px; border:4px solid rgba(255,255,255,0.3); border-top:4px solid white; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 16px; }
+@keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+.file-badge { animation:slideIn 0.3s ease; }
+@keyframes slideIn { from { transform:translateY(-10px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.card { transition:all 0.3s ease; }
+.card:hover { transform:translateY(-2px); box-shadow:0 8px 16px rgba(0,0,0,0.1); }
+.btn-generate { transition:all 0.3s ease; position:relative; overflow:hidden; }
+.btn-generate::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition:left 0.5s ease; }
+.btn-generate:hover::before { left:100%; }
+.btn-generate:active { transform:scale(0.98); }
+.btn-generate:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+.btn-generate:disabled::before { display:none; }
+
+  footer{
+    padding:20px 0;
+    border-top:1px solid var(--border);
+    font-size:.72rem;font-family:var(--mono);color:var(--muted);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+
+  /* ── Responsive ── */
+  @media(max-width:640px){
+    .config-grid{grid-template-columns:1fr}
+    .stats-row{flex-direction:column}
+    header{flex-direction:column;align-items:flex-start;gap:14px}
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📄</div>
+      <div class="logo-text">
+        <h1>Student PDF Generator</h1>
+        <p>FastAPI → Java Spring Boot → Local Storage</p>
+      </div>
+    </div>
+    <div class="status-pill">
+      <span class="dot" id="svcDot"></span>
+      <span id="svcLabel">Checking services…</span>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <!-- Upload card -->
+    <div class="card">
+      <p class="card-title">// 01 — Upload Excel File (Universal Support)</p>
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls"/>
+        <div class="drop-content">
+          <span class="drop-icon">📊</span>
+          <h3>Drop any Excel file here</h3>
+          <p>Automatic format detection • Smart conversion • One-click PDF generation</p>
+          <button class="btn-browse" onclick="document.getElementById('fileInput').click()">
+            📁 Browse Files
+          </button>
+        </div>
+        <div class="file-badge" id="fileBadge" style="display:none">
+          <span>📎</span><span id="fileName"></span>
+          <button class="remove-file" onclick="removeFile()">✕</button>
+        </div>
+        <div class="progress-overlay" id="progressOverlay" style="display:none">
+          <div class="progress-content">
+            <div class="progress-spinner"></div>
+            <p id="progressText">Processing...</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- File Analysis Section -->
+      <div id="fileAnalysis" style="margin-top:16px; display:none;">
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+          <h4 style="color:var(--text); margin-bottom:8px; font-size:0.85rem;">🔍 File Analysis</h4>
+          <div id="analysisContent" style="font-family:var(--mono); font-size:0.75rem; color:var(--muted);"></div>
+          <div id="conversionActions" style="margin-top:12px; display:none;">
+            <button class="btn-preview" id="btnConvertFile" style="margin-right:8px;">
+              🔄 Convert to Standard Format
+            </button>
+            <button class="btn-preview" id="btnUseAsIs" style="background:var(--ok);">
+              ✅ Use As Is
+            </button>
+            <button class="btn-preview" id="btnConvertAndGenerate" style="background:var(--accent);">
+              ⚡ Convert & Generate PDFs
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config card -->
+    <div class="card">
+      <p class="card-title">// 02 — Configuration</p>
+      <div class="config-grid">
+        <div class="field">
+          <label>FastAPI Backend URL</label>
+          <input type="text" id="apiUrl" value="http://localhost:8000"/>
+        </div>
+        <div class="field">
+          <label>Output Folder (Java side)</label>
+          <input type="text" id="outFolder" value="./output" readonly/>
+        </div>
+        <div class="field">
+          <label>Number of Students</label>
+          <input type="number" id="numStudents" value="5" min="1" max="50"/>
+        </div>
+        <div class="field">
+          <label>Questions per Student</label>
+          <input type="number" id="questionsPerStudent" value="15" min="10" max="20"/>
+        </div>
+        <div class="field">
+          <label>Question Range (Start-End)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="number" id="questionStart" value="1" min="1" style="flex:1;"/>
+            <span style="color:var(--muted);">to</span>
+            <input type="number" id="questionEnd" value="20" min="1" style="flex:1;"/>
+          </div>
+        </div>
+        <div class="field">
+          <label>Shuffle Questions</label>
+          <select id="shuffleMode" style="width:100%;">
+            <option value="none">No Shuffle (Same order for all)</option>
+            <option value="random">Random Order (Each student gets different order)</option>
+            <option value="random_subset">Random Subset (Different questions per student)</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Advanced Options -->
+      <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          <input type="checkbox" id="enablePreview" style="width:16px; height:16px;"/>
+          <label for="enablePreview" style="margin:0; font-size:0.85rem;">Show preview before generation</label>
+        </div>
+        <button class="btn-preview" id="btnPreview" style="display:none;">
+          👁️ Preview Question Distribution
+        </button>
+      </div>
+    </div>
+
+    <!-- Generate card -->
+    <div class="card">
+      <p class="card-title">// 03 — Generate PDFs</p>
+      <button class="btn-generate" id="btnGenerate">
+        <span id="btnText">⚡ Generate PDFs for All Students</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label" id="progressLabel">Initialising…</div>
+      </div>
+
+      <div class="log-panel" id="logPanel" style="margin-top:16px"></div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="alert alert-err" id="alertErr"></div>
+    <div class="alert alert-ok"  id="alertOk"></div>
+
+    <!-- Results card (hidden initially) -->
+    <div class="card" id="resultsCard" style="display:none">
+      <p class="card-title">// 04 — Generated PDFs</p>
+
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="results-grid" id="resultsGrid" style="margin-top:24px"></div>
+
+      <!-- File Directory Section -->
+      <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
+        <h4 style="color:var(--text); margin-bottom:12px; font-size:0.9rem;">📁 File Directory Access</h4>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn-directory" id="btnOpenDirectory">📂 Open Output Folder</button>
+          <button class="btn-directory" id="btnListFiles">📋 List All PDFs</button>
+          <button class="btn-directory" id="btnDownloadAll">📦 Download All PDFs</button>
+        </div>
+        <div id="fileList" style="margin-top:16px; display:none;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; max-height:200px; overflow-y:auto; font-family:var(--mono); font-size:0.75rem;"></div>
+        </div>
+      </div>
+
+      <button class="btn-reset" id="btnReset" style="margin-top:24px">↩ Reset — Upload Another File</button>
+    </div>
+
+  </main>
+
+  <footer>
+    <span>Student PDF Generator v1.0.0</span>
+    <span id="footerStatus">System ready</span>
+  </footer>
+</div>
+
+<script>
+const API_BASE = () => {
+  // Production: Render backend
+  return 'https://student-pdf-backend.onrender.com';
+  
+  // Development: Local backend (uncomment for local testing)
+  // return document.getElementById('apiUrl').value.replace(/\/$/, '');
+};
+
+// ── Service health check ─────────────────────────────────────────────────────
+async function checkServices() {
+  const dot   = document.getElementById('svcDot');
+  const label = document.getElementById('svcLabel');
+  try {
+    const [fastapiRes, javaRes] = await Promise.all([
+      fetch(`${API_BASE()}/health`).then(r => r.ok),
+      fetch(`${API_BASE()}/java-status`).then(r => r.json())
+    ]);
+    const javaOk = javaRes.java_service === 'reachable';
+    if (fastapiRes && javaOk) {
+      dot.className = 'dot ok'; label.textContent = 'All services online';
+    } else if (fastapiRes) {
+      dot.className = 'dot err'; label.textContent = 'Java service offline';
+    } else {
+      dot.className = 'dot err'; label.textContent = 'FastAPI offline';
+    }
+  } catch {
+    dot.className = 'dot err'; label.textContent = 'FastAPI unreachable';
+  }
+}
+checkServices();
+setInterval(checkServices, 15000);
+
+// ── File Analysis & Universal Converter ───────────────────────────────────────────
+let currentFile = null;
+let fileAnalysis = null;
+
+// Enhanced file input handler with analysis
+function setFile(file){
+  currentFile = file;
+  const badge = document.getElementById('fileBadge');
+  const fileName = document.getElementById('fileName');
+  fileName.textContent = file.name;
+  badge.style.display = 'flex';
+  document.getElementById('btnGenerate').disabled = false;
+  log('info', `File selected: ${file.name} (${formatBytes(file.size)})`);
+  
+  // Auto-analyze file
+  analyzeFile();
+}
+
+function analyzeFile(){
+  if (!currentFile) return;
+  
+  showProgress('Analyzing Excel file structure...');
+  
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  
+  fetch(`${API_BASE()}/analyze-excel`, { method:'POST', body:formData })
+    .then(r => r.json())
+    .then(result => {
+      hideProgress();
+      displayAnalysis(result);
+    })
+    .catch(err => {
+      hideProgress();
+      log('err', 'Analysis failed: ' + err.message);
+    });
+}
+
+function displayAnalysis(result){
+  const analysisDiv = document.getElementById('fileAnalysis');
+  const contentDiv = document.getElementById('analysisContent');
+  const actionsDiv = document.getElementById('conversionActions');
+  
+  const analysis = result.analysis || result;
+  const confidence = (analysis.confidence * 100).toFixed(0);
+  const needsConversion = analysis.needs_conversion || result.needs_conversion;
+  
+  let html = `
+    <div style="margin-bottom:8px;">
+      <strong>📊 Structure:</strong> ${analysis.structure_type || 'Unknown'}
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>🎯 Confidence:</strong> 
+      <span style="color: ${confidence > 80 ? 'var(--ok)' : confidence > 50 ? 'var(--warn)' : 'var(--err)'}">
+        ${confidence}%
+      </span>
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>📋 Size:</strong> ${analysis.total_rows || 0} rows × ${analysis.total_columns || 0} columns
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>🔄 Status:</strong> 
+      <span style="color: ${needsConversion ? 'var(--warn)' : 'var(--ok)'}">
+        ${needsConversion ? 'Needs conversion' : 'Ready to use'}
+      </span>
+    </div>
+  `;
+  
+  if (analysis.columns && analysis.columns.length > 0) {
+    html += '<div style="margin-top:8px;"><strong>📝 Columns:</strong> ';
+    html += analysis.columns.slice(0, 10).map(col => `<span style="display:inline-block; margin:1px; padding:2px 4px; background:var(--surface2); border-radius:2px; font-size:0.6rem;">${col}</span>`).join('');
+    if (analysis.columns.length > 10) {
+      html += `<span style="display:inline-block; margin:2px; padding:2px 6px; background:var(--muted); color:white; border-radius:3px; font-size:0.6rem;">+${analysis.columns.length - 10} more</span>`;
+    }
+    html += '</div>';
+  }
+  
+  contentDiv.innerHTML = html;
+  
+  // Show appropriate actions
+  if (needsConversion) {
+    actionsDiv.style.display = 'block';
+    document.getElementById('btnConvertFile').style.display = 'inline-block';
+    document.getElementById('btnUseAsIs').style.display = 'none';
+  } else {
+    actionsDiv.style.display = 'block';
+    document.getElementById('btnConvertFile').style.display = 'none';
+    document.getElementById('btnUseAsIs').style.display = 'inline-block';
+  }
+  
+  analysisDiv.style.display = 'block';
+}
+
+// Convert file handler
+document.getElementById('btnConvertFile')?.addEventListener('click', async () => {
+  if (!currentFile) return;
+  
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  
+  try {
+    log('info', 'Converting Excel file to standard format...');
+    const response = await fetch(`${API_BASE()}/convert-excel`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      log('ok', `✅ File converted successfully: ${result.converted_filename}`);
+      showAlert('ok', `✅ <strong>File converted successfully!</strong><br>Ready for PDF generation.`);
+      
+      // Hide analysis and show ready state
+      document.getElementById('fileAnalysis').style.display = 'none';
+      document.getElementById('btnGenerate').disabled = false;
+    } else {
+      log('err', `Conversion failed: ${result.detail}`);
+      showAlert('err', `❌ <strong>Conversion failed:</strong> ${result.detail}`);
+    }
+  } catch (err) {
+    log('err', 'Conversion error: ' + err.message);
+    showAlert('err', `❌ <strong>Conversion error:</strong> ${err.message}`);
+  }
+});
+
+// Convert and Generate PDFs handler
+document.getElementById('btnConvertAndGenerate')?.addEventListener('click', async () => {
+  if (!currentFile) return;
+  
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  
+  // Get configuration values
+  const numStudents = parseInt(document.getElementById('numStudents').value);
+  const questionsPerStudent = parseInt(document.getElementById('questionsPerStudent').value);
+  const questionStart = parseInt(document.getElementById('questionStart').value);
+  const questionEnd = parseInt(document.getElementById('questionEnd').value);
+  const shuffleMode = document.getElementById('shuffleMode').value;
+  
+  // Add configuration to formData
+  formData.append('num_students', numStudents);
+  formData.append('questions_per_student', questionsPerStudent);
+  formData.append('question_start', questionStart);
+  formData.append('question_end', questionEnd);
+  formData.append('shuffle_mode', shuffleMode);
+  
+  try {
+    log('info', 'Converting Excel file and generating PDFs...');
+    
+    // Use the advanced upload endpoint with configuration
+    const response = await fetch(`${API_BASE()}/upload-advanced`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      log('ok', `✅ ${data.processedStudentCount} PDFs generated successfully!`);
+      showAlert('ok', `✅ <strong>${data.processedStudentCount} PDFs generated!</strong><br>Configuration: ${data.configuration.shuffle_mode} shuffle, ${data.originalStudentCount}→${data.processedStudentCount} students`);
+
+      // Hide analysis and show results
+      document.getElementById('fileAnalysis').style.display = 'none';
+      renderResults(data);
+    } else {
+      log('err', `Convert & Generate failed: ${data.detail}`);
+      showAlert('err', `❌ <strong>Error:</strong> ${data.detail}`);
+    }
+  } catch (err) {
+    log('err', 'Convert & Generate error: ' + err.message);
+    showAlert('err', `❌ <strong>Error:</strong> ${err.message}`);
+  }
+});
+
+// Use as-is handler
+document.getElementById('btnUseAsIs')?.addEventListener('click', () => {
+  log('ok', 'File is compatible - ready for PDF generation');
+  document.getElementById('fileAnalysis').style.display = 'none';
+  document.getElementById('btnGenerate').disabled = false;
+});
+
+// ── Interactive Functions ──
+function removeFile() {
+  currentFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('fileAnalysis').style.display = 'none';
+  document.getElementById('btnGenerate').disabled = true;
+  document.getElementById('dropZone').classList.remove('has-file');
+  log('info', 'File removed');
+}
+
+function showProgress(message) {
+  document.getElementById('progressText').textContent = message;
+  document.getElementById('progressOverlay').style.display = 'flex';
+}
+
+function hideProgress() {
+  document.getElementById('progressOverlay').style.display = 'none';
+}
+
+function enhanceDropZone() {
+  const dropZone = document.getElementById('dropZone');
+  
+  // Add drag and drop visual feedback
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+  
+  // Add file input change animation
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      dropZone.classList.add('has-file');
+      setTimeout(() => {
+        dropZone.classList.remove('has-file');
+      }, 300);
+    }
+  });
+}
+
+function addMicroInteractions() {
+  // Add ripple effect to buttons
+  document.querySelectorAll('button').forEach(button => {
+    button.addEventListener('click', function(e) {
+      const ripple = document.createElement('span');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+      
+      ripple.style.cssText = `
+        position: absolute;
+        width: ${size}px;
+        height: ${size}px;
+        left: ${x}px;
+        top: ${y}px;
+        background: rgba(255,255,255,0.5);
+        border-radius: 50%;
+        transform: scale(0);
+        animation: ripple 0.6s ease-out;
+        pointer-events: none;
+      `;
+      
+      this.style.position = 'relative';
+      this.style.overflow = 'hidden';
+      this.appendChild(ripple);
+      
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+}
+
+// Add ripple animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// ── Initialize Interactive Features ──
+document.addEventListener('DOMContentLoaded', () => {
+  enhanceDropZone();
+  addMicroInteractions();
+  log('info', 'Interactive UI initialized');
+});
+
+// Format bytes helper
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  document.getElementById('fileName').textContent = f.name;
+  document.getElementById('fileBadge').style.display = 'inline-flex';
+  log('info', `File selected: ${f.name} (${(f.size/1024).toFixed(1)} KB)`);
+}
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+function log(type, msg) {
+  const panel = document.getElementById('logPanel');
+  panel.style.display = 'block';
+  const now = new Date().toLocaleTimeString('en-GB', {hour12:false});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">[${now}]</span><span class="log-${type}">${msg}</span>`;
+  panel.appendChild(line);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ── Progress ─────────────────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  const wrap = document.getElementById('progressWrap');
+  wrap.style.display = 'block';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+function showAlert(type, msg) {
+  const el = document.getElementById(type === 'err' ? 'alertErr' : 'alertOk');
+  el.style.display = 'block';
+  el.innerHTML = msg;
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function clearAlerts() {
+  document.getElementById('alertErr').style.display = 'none';
+  document.getElementById('alertOk').style.display  = 'none';
+}
+
+// ── Generate ─────────────────────────────────────────────────────────────────
+document.getElementById('btnGenerate').addEventListener('click', async () => {
+  const file = fileInput.files[0];
+  if (!file) { showAlert('err', '⚠️ Please select an Excel file first.'); return; }
+
+  // Get configuration values
+  const numStudents = parseInt(document.getElementById('numStudents').value);
+  const questionsPerStudent = parseInt(document.getElementById('questionsPerStudent').value);
+  const questionStart = parseInt(document.getElementById('questionStart').value);
+  const questionEnd = parseInt(document.getElementById('questionEnd').value);
+  const shuffleMode = document.getElementById('shuffleMode').value;
+
+  // Validate configuration
+  if (questionStart > questionEnd) {
+    showAlert('err', '⚠️ Question start must be less than or equal to question end.');
+    return;
+  }
+
+  if (questionsPerStudent < 10 || questionsPerStudent > 20) {
+    showAlert('err', '⚠️ Questions per student must be between 10 and 20.');
+    return;
+  }
+
+  if (numStudents < 1 || numStudents > 50) {
+    showAlert('err', '⚠️ Number of students must be between 1 and 50.');
+    return;
+  }
+
+  clearAlerts();
+  document.getElementById('resultsCard').style.display = 'none';
+
+  const btn     = document.getElementById('btnGenerate');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('spinner');
+
+  btn.disabled  = true;
+  btnText.style.display = 'none';
+  spinner.style.display = 'block';
+
+  log('info', `Starting advanced upload: ${numStudents} students, ${questionsPerStudent} questions each, ${shuffleMode} shuffle`);
+  setProgress(10, 'Uploading Excel file…');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('num_students', numStudents);
+    formData.append('questions_per_student', questionsPerStudent);
+    formData.append('question_start', questionStart);
+    formData.append('question_end', questionEnd);
+    formData.append('shuffle_mode', shuffleMode);
+
+    log('info', `POST ${API_BASE()}/upload-advanced`);
+    setProgress(30, 'FastAPI parsing and processing Excel…');
+
+    const resp = await fetch(`${API_BASE()}/upload-advanced`, { method:'POST', body: formData });
+    setProgress(60, 'Java service generating PDFs…');
+
+    const data = await resp.json();
+    log(resp.ok ? 'ok' : 'err', `HTTP ${resp.status} — ${JSON.stringify(data).slice(0,120)}`);
+
+    if (!resp.ok) {
+      throw new Error(data.detail || JSON.stringify(data));
+    }
+
+    setProgress(100, `Done! ${data.processedStudentCount} PDF(s) generated.`);
+    log('ok', `✅ ${data.processedStudentCount} PDF(s) saved to ${data.outputDirectory}`);
+    log('info', `Configuration: ${data.configuration.shuffle_mode} shuffle, ${data.originalStudentCount}→${data.processedStudentCount} students`);
+
+    showAlert('ok', `✅ <strong>${data.processedStudentCount} PDF(s) generated</strong> with advanced configuration and saved to <code>${data.outputDirectory}</code>`);
+
+    renderResults(data);
+
+  } catch (err) {
+    log('err', '❌ ' + err.message);
+    setProgress(0, 'Failed.');
+    showAlert('err', `❌ <strong>Error:</strong> ${err.message}`);
+  } finally {
+    btn.disabled  = false;
+    btnText.style.display = 'inline';
+    spinner.style.display = 'none';
+  }
+});
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(data) {
+  const card  = document.getElementById('resultsCard');
+  const grid  = document.getElementById('resultsGrid');
+  const stats = document.getElementById('statsRow');
+
+  const files = data.generatedFiles || [];
+
+  // Stats
+  stats.innerHTML = `
+    <div class="stat-box">
+      <div class="stat-val green">${data.studentCount}</div>
+      <div class="stat-label">Students Processed</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val blue">${files.length}</div>
+      <div class="stat-label">PDFs Generated</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--warn);font-size:1.1rem">${data.outputDirectory || './output'}</div>
+      <div class="stat-label">Output Directory</div>
+    </div>
+  `;
+
+  // PDF cards
+  grid.innerHTML = '';
+  files.forEach((f, i) => {
+    const name    = f.studentName    || '—';
+    const enroll  = f.enrollmentNo   || '—';
+    const path    = f.filePath       || f;
+    const qCount  = f.questionCount  || '?';
+
+    const card2 = document.createElement('div');
+    card2.className = 'pdf-card';
+    card2.style.animationDelay = (i * 80) + 'ms';
+    card2.innerHTML = `
+      <div class="pdf-card-header">
+        <div class="pdf-icon">📄</div>
+        <div>
+          <div class="pdf-name">${name}</div>
+          <div class="pdf-enroll">${enroll}</div>
+        </div>
+      </div>
+      <div class="pdf-path">${path}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="pdf-badge">✅ Saved</span>
+        <span class="pdf-badge" style="background:rgba(37,99,235,.12);border-color:var(--accent2);color:var(--accent2)">${qCount} Questions</span>
+      </div>
+    `;
+    grid.appendChild(card2);
+  });
+
+  card.style.display = 'block';
+  card.scrollIntoView({behavior:'smooth'});
+}
+
+// ── Preview checkbox handler ─────────────────────────────────────────────────────
+document.getElementById('enablePreview').addEventListener('change', (e) => {
+  const btnPreview = document.getElementById('btnPreview');
+  btnPreview.style.display = e.target.checked ? 'block' : 'none';
+});
+
+// ── Preview functionality ─────────────────────────────────────────────────────────
+document.getElementById('btnPreview').addEventListener('click', async () => {
+  const file = fileInput.files[0];
+  if (!file) { 
+    showAlert('err', '⚠️ Please select an Excel file first.'); 
+    return; 
+  }
+
+  // Get configuration values
+  const numStudents = parseInt(document.getElementById('numStudents').value);
+  const questionsPerStudent = parseInt(document.getElementById('questionsPerStudent').value);
+  const questionStart = parseInt(document.getElementById('questionStart').value);
+  const questionEnd = parseInt(document.getElementById('questionEnd').value);
+  const shuffleMode = document.getElementById('shuffleMode').value;
+
+  // Validate configuration
+  if (questionStart > questionEnd) {
+    showAlert('err', '⚠️ Question start must be less than or equal to question end.');
+    return;
+  }
+
+  log('info', `Generating preview for ${numStudents} students...`);
+  
+  try {
+    // Create a simple preview (without actual PDF generation)
+    const previewHtml = generatePreviewHtml(file, {
+      numStudents,
+      questionsPerStudent,
+      questionStart,
+      questionEnd,
+      shuffleMode
+    });
+    
+    // Show preview in a modal or new section
+    showPreviewModal(previewHtml);
+    
+  } catch (err) {
+    log('err', 'Preview failed: ' + err.message);
+    showAlert('err', `❌ <strong>Preview Error:</strong> ${err.message}`);
+  }
+});
+
+function generatePreviewHtml(file, config) {
+  // This is a simplified preview - in a real implementation, 
+  // you'd parse the Excel and show actual question distribution
+  const { numStudents, questionsPerStudent, questionStart, questionEnd, shuffleMode } = config;
+  
+  let html = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; max-width:600px; margin:20px auto;">
+      <h3 style="color:var(--text); margin-bottom:16px;">📋 Question Distribution Preview</h3>
+      
+      <div style="display:grid; gap:12px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; padding:8px; background:var(--surface2); border-radius:6px;">
+          <span style="color:var(--muted);">Total Students:</span>
+          <span style="color:var(--text); font-weight:bold;">${numStudents}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px; background:var(--surface2); border-radius:6px;">
+          <span style="color:var(--muted);">Questions per Student:</span>
+          <span style="color:var(--text); font-weight:bold;">${questionsPerStudent}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px; background:var(--surface2); border-radius:6px;">
+          <span style="color:var(--muted);">Question Range:</span>
+          <span style="color:var(--text); font-weight:bold;">${questionStart}-${questionEnd}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px; background:var(--surface2); border-radius:6px;">
+          <span style="color:var(--muted);">Shuffle Mode:</span>
+          <span style="color:var(--text); font-weight:bold;">${shuffleMode}</span>
+        </div>
+      </div>
+      
+      <div style="border-top:1px solid var(--border); padding-top:16px;">
+        <h4 style="color:var(--text); margin-bottom:12px;">Sample Distribution:</h4>
+        <div style="font-family:var(--mono); font-size:0.75rem; color:var(--muted); line-height:1.6;">
+  `;
+  
+  // Generate sample student previews
+  for (let i = 1; i <= Math.min(3, numStudents); i++) {
+    html += `
+      <div style="margin-bottom:8px; padding:8px; background:var(--bg); border-radius:4px;">
+        <strong>Student ${i}:</strong> Questions `;
+    
+    if (shuffleMode === 'random') {
+      // Show random order
+      const questions = Array.from({length: questionsPerStudent}, (_, j) => j + 1);
+      questions.sort(() => Math.random() - 0.5);
+      html += questions.join(', ');
+    } else if (shuffleMode === 'random_subset') {
+      // Show random subset
+      const totalQuestions = questionEnd - questionStart + 1;
+      const questions = Array.from({length: questionsPerStudent}, (_, j) => j + questionStart);
+      questions.sort(() => Math.random() - 0.5);
+      html += questions.join(', ');
+    } else {
+      // Show sequential order
+      const questions = Array.from({length: questionsPerStudent}, (_, j) => j + questionStart);
+      html += questions.join(', ');
+    }
+    
+    html += '</div>';
+  }
+  
+  if (numStudents > 3) {
+    html += `<div style="text-align:center; color:var(--muted); font-style:italic;">... and ${numStudents - 3} more students</div>`;
+  }
+  
+  html += `
+        </div>
+      </div>
+      
+      <div style="margin-top:20px; text-align:center;">
+        <button onclick="closePreview()" style="padding:8px 16px; background:var(--accent); color:white; border:none; border-radius:6px; cursor:pointer;">
+          Close Preview
+        </button>
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+function showPreviewModal(html) {
+  // Create modal overlay
+  const modal = document.createElement('div');
+  modal.id = 'previewModal';
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+    background: rgba(0,0,0,0.8); z-index: 1000; 
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  `;
+  modal.innerHTML = html;
+  
+  // Add close functionality
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closePreview();
+    }
+  });
+  
+  document.body.appendChild(modal);
+}
+
+function closePreview() {
+  const modal = document.getElementById('previewModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', () => {
+  fileInput.value = '';
+  document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('logPanel').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('fileList').style.display = 'none';
+  clearAlerts();
+  log('info', 'Reset complete — ready for next upload.');
+});
+
+// ── File Directory Functions ─────────────────────────────────────────────────────
+document.getElementById('btnOpenDirectory').addEventListener('click', () => {
+  // Open the local file directory
+  const outputPath = '/Users/shreyanshgupta/Documents/6th Sem /student-pdf-generator/java_service/output';
+  window.open(`file://${outputPath}`, '_blank');
+  log('info', `Opening output directory: ${outputPath}`);
+});
+
+document.getElementById('btnListFiles').addEventListener('click', async () => {
+  try {
+    log('info', 'Fetching Java service info...');
+    const infoResponse = await fetch(`${API_BASE()}/java-info`);
+    const javaInfo = await infoResponse.json();
+    
+    log('info', 'Fetching file list from Java service...');
+    const response = await fetch(`${API_BASE()}/java-status`);
+    const data = await response.json();
+    
+    if (data.detail && data.detail.existingPdfCount > 0) {
+      // Get detailed file list
+      const filesResponse = await fetch(javaInfo.java_files_endpoint);
+      const filesData = await filesResponse.json();
+      
+      const fileListDiv = document.getElementById('fileList');
+      const filesList = fileListDiv.querySelector('div');
+      
+      if (filesData.files && filesData.files.length > 0) {
+        let html = '<div style="color:var(--accent2); margin-bottom:8px;">📄 Available PDFs:</div>';
+        filesData.files.forEach(file => {
+          html += `
+            <div style="margin:4px 0; padding:6px; background:var(--bg); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+              <span>${file.fileName}</span>
+              <a href="${javaInfo.java_download_endpoint}${file.fileName}" 
+                 style="color:var(--ok); text-decoration:none; font-size:0.7rem; padding:2px 6px; border:1px solid var(--ok); border-radius:4px;"
+                 download>⬇ Download</a>
+            </div>
+          `;
+        });
+        html += `<div style="color:var(--muted); margin-top:8px; font-size:0.7rem;">Total: ${filesData.files.length} files</div>`;
+        filesList.innerHTML = html;
+        fileListDiv.style.display = 'block';
+        log('ok', `Found ${filesData.files.length} PDF files`);
+      } else {
+        filesList.innerHTML = '<div style="color:var(--warn);">No PDF files found</div>';
+        fileListDiv.style.display = 'block';
+        log('warn', 'No PDF files found in output directory');
+      }
+    } else {
+      showAlert('err', 'No PDF files found. Generate some PDFs first!');
+    }
+  } catch (err) {
+    log('err', 'Failed to fetch file list: ' + err.message);
+    showAlert('err', 'Could not connect to Java service to list files');
+  }
+});
+
+document.getElementById('btnDownloadAll').addEventListener('click', async () => {
+  try {
+    log('info', 'Preparing bulk download...');
+    
+    // Get Java service info dynamically
+    const infoResponse = await fetch(`${API_BASE()}/java-info`);
+    const javaInfo = await infoResponse.json();
+    
+    const response = await fetch(javaInfo.java_files_endpoint);
+    const filesData = await response.json();
+    
+    if (filesData.files && filesData.files.length > 0) {
+      // Download files one by one
+      let downloaded = 0;
+      for (const file of filesData.files) {
+        try {
+          const downloadUrl = `${javaInfo.java_download_endpoint}${file.fileName}`;
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = file.fileName;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          downloaded++;
+          
+          // Small delay between downloads
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (err) {
+          log('err', `Failed to download ${file.fileName}: ${err.message}`);
+        }
+      }
+      
+      showAlert('ok', `✅ <strong>Downloaded ${downloaded} PDF files</strong>`);
+      log('ok', `Bulk download completed: ${downloaded}/${filesData.files.length} files`);
+    } else {
+      showAlert('err', 'No PDF files found to download');
+    }
+  } catch (err) {
+    log('err', 'Bulk download failed: ' + err.message);
+    showAlert('err', 'Could not prepare bulk download');
+  }
+});
+</script>
+</body>
+</html>
