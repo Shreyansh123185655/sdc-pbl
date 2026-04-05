@@ -27,3 +27,5 @@ output/*.pdf
 
 # Sample data generated
 sample_data/students_sample.xlsx
+.vercel
+.env*.local

@@ -297,6 +297,30 @@
   }
   .btn-preview:active{transform:translateY(0)}
 
+/* ── Interactive Elements ── */
+.btn-browse { background:var(--accent); color:white; border:none; padding:12px 24px; border-radius:8px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.3s ease; margin-top:16px; box-shadow:0 4px 6px rgba(99,102,241,0.2); }
+.btn-browse:hover { transform:translateY(-2px); box-shadow:0 6px 12px rgba(99,102,241,0.3); }
+.remove-file { background:var(--err); color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:0.7rem; margin-left:8px; transition:all 0.3s ease; }
+.remove-file:hover { transform:scale(1.1); }
+.drop-content { transition:all 0.3s ease; }
+.drop-zone:hover .drop-content { transform:scale(1.02); }
+.drop-zone.dragover { background:var(--surface2); border-color:var(--accent); }
+.drop-zone.dragover .drop-content { transform:scale(1.05); }
+.progress-overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; border-radius:12px; }
+.progress-content { text-align:center; color:white; }
+.progress-spinner { width:40px; height:40px; border:4px solid rgba(255,255,255,0.3); border-top:4px solid white; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 16px; }
+@keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+.file-badge { animation:slideIn 0.3s ease; }
+@keyframes slideIn { from { transform:translateY(-10px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.card { transition:all 0.3s ease; }
+.card:hover { transform:translateY(-2px); box-shadow:0 8px 16px rgba(0,0,0,0.1); }
+.btn-generate { transition:all 0.3s ease; position:relative; overflow:hidden; }
+.btn-generate::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition:left 0.5s ease; }
+.btn-generate:hover::before { left:100%; }
+.btn-generate:active { transform:scale(0.98); }
+.btn-generate:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+.btn-generate:disabled::before { display:none; }
+
   footer{
     padding:20px 0;
     border-top:1px solid var(--border);
@@ -338,11 +362,23 @@
 
       <div class="drop-zone" id="dropZone">
         <input type="file" id="fileInput" accept=".xlsx,.xls"/>
-        <span class="drop-icon">📊</span>
-        <h3>Drop any Excel file here</h3>
-        <p>Automatic format detection • Smart conversion • One-click PDF generation</p>
+        <div class="drop-content">
+          <span class="drop-icon">📊</span>
+          <h3>Drop any Excel file here</h3>
+          <p>Automatic format detection • Smart conversion • One-click PDF generation</p>
+          <button class="btn-browse" onclick="document.getElementById('fileInput').click()">
+            📁 Browse Files
+          </button>
+        </div>
         <div class="file-badge" id="fileBadge" style="display:none">
           <span>📎</span><span id="fileName"></span>
+          <button class="remove-file" onclick="removeFile()">✕</button>
+        </div>
+        <div class="progress-overlay" id="progressOverlay" style="display:none">
+          <div class="progress-content">
+            <div class="progress-spinner"></div>
+            <p id="progressText">Processing...</p>
+          </div>
         </div>
       </div>
       
@@ -508,65 +544,74 @@ let currentFile = null;
 let fileAnalysis = null;
 
 // Enhanced file input handler with analysis
-function setFile(file) {
+function setFile(file){
   currentFile = file;
   const badge = document.getElementById('fileBadge');
-  const name = document.getElementById('fileName');
+  const fileName = document.getElementById('fileName');
+  fileName.textContent = file.name;
   badge.style.display = 'flex';
-  name.textContent = file.name;
+  document.getElementById('btnGenerate').disabled = false;
   log('info', `File selected: ${file.name} (${formatBytes(file.size)})`);
   
-  // Automatically analyze file
-  analyzeFile(file);
+  // Auto-analyze file
+  analyzeFile();
 }
 
-async function analyzeFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
+function analyzeFile(){
+  if (!currentFile) return;
   
-  try {
-    log('info', 'Analyzing Excel file structure...');
-    const response = await fetch(`${API_BASE()}/analyze-excel`, {
-      method: 'POST',
-      body: formData
+  showProgress('Analyzing Excel file structure...');
+  
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  
+  fetch(`${API_BASE()}/analyze-excel`, { method:'POST', body:formData })
+    .then(r => r.json())
+    .then(result => {
+      hideProgress();
+      displayAnalysis(result);
+    })
+    .catch(err => {
+      hideProgress();
+      log('err', 'Analysis failed: ' + err.message);
     });
-    
-    const analysis = await response.json();
-    fileAnalysis = analysis;
-    
-    if (response.ok) {
-      displayAnalysis(analysis);
-    } else {
-      log('warn', `Analysis failed: ${analysis.detail}`);
-    }
-  } catch (err) {
-    log('err', 'File analysis error: ' + err.message);
-  }
 }
 
-function displayAnalysis(analysis) {
+function displayAnalysis(result){
   const analysisDiv = document.getElementById('fileAnalysis');
   const contentDiv = document.getElementById('analysisContent');
   const actionsDiv = document.getElementById('conversionActions');
   
-  // Display analysis results
+  const analysis = result.analysis || result;
+  const confidence = (analysis.confidence * 100).toFixed(0);
+  const needsConversion = analysis.needs_conversion || result.needs_conversion;
+  
   let html = `
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:8px; margin-bottom:12px;">
-      <div><strong>Structure Type:</strong> ${analysis.analysis?.structure_type || 'Unknown'}</div>
-      <div><strong>Confidence:</strong> ${(analysis.analysis?.confidence || 0).toFixed(2)}</div>
-      <div><strong>Rows:</strong> ${analysis.analysis?.total_rows || 0}</div>
-      <div><strong>Columns:</strong> ${analysis.analysis?.total_columns || 0}</div>
+    <div style="margin-bottom:8px;">
+      <strong>📊 Structure:</strong> ${analysis.structure_type || 'Unknown'}
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>🎯 Confidence:</strong> 
+      <span style="color: ${confidence > 80 ? 'var(--ok)' : confidence > 50 ? 'var(--warn)' : 'var(--err)'}">
+        ${confidence}%
+      </span>
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>📋 Size:</strong> ${analysis.total_rows || 0} rows × ${analysis.total_columns || 0} columns
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>🔄 Status:</strong> 
+      <span style="color: ${needsConversion ? 'var(--warn)' : 'var(--ok)'}">
+        ${needsConversion ? 'Needs conversion' : 'Ready to use'}
+      </span>
     </div>
   `;
   
-  if (analysis.analysis?.columns) {
-    html += '<div style="margin-bottom:8px;"><strong>Detected Columns:</strong></div>';
-    html += '<div style="background:var(--bg); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.7rem; max-height:80px; overflow-y:auto;">';
-    analysis.analysis.columns.slice(0, 10).forEach(col => {
-      html += `<span style="display:inline-block; margin:2px; padding:2px 6px; background:var(--accent2); color:white; border-radius:3px; font-size:0.6rem;">${col}</span>`;
-    });
-    if (analysis.analysis.columns.length > 10) {
-      html += `<span style="display:inline-block; margin:2px; padding:2px 6px; background:var(--muted); color:white; border-radius:3px; font-size:0.6rem;">+${analysis.analysis.columns.length - 10} more</span>`;
+  if (analysis.columns && analysis.columns.length > 0) {
+    html += '<div style="margin-top:8px;"><strong>📝 Columns:</strong> ';
+    html += analysis.columns.slice(0, 10).map(col => `<span style="display:inline-block; margin:1px; padding:2px 4px; background:var(--surface2); border-radius:2px; font-size:0.6rem;">${col}</span>`).join('');
+    if (analysis.columns.length > 10) {
+      html += `<span style="display:inline-block; margin:2px; padding:2px 6px; background:var(--muted); color:white; border-radius:3px; font-size:0.6rem;">+${analysis.columns.length - 10} more</span>`;
     }
     html += '</div>';
   }
@@ -574,7 +619,7 @@ function displayAnalysis(analysis) {
   contentDiv.innerHTML = html;
   
   // Show appropriate actions
-  if (analysis.needs_conversion) {
+  if (needsConversion) {
     actionsDiv.style.display = 'block';
     document.getElementById('btnConvertFile').style.display = 'inline-block';
     document.getElementById('btnUseAsIs').style.display = 'none';
@@ -674,6 +719,107 @@ document.getElementById('btnUseAsIs')?.addEventListener('click', () => {
   log('ok', 'File is compatible - ready for PDF generation');
   document.getElementById('fileAnalysis').style.display = 'none';
   document.getElementById('btnGenerate').disabled = false;
+});
+
+// ── Interactive Functions ──
+function removeFile() {
+  currentFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('fileAnalysis').style.display = 'none';
+  document.getElementById('btnGenerate').disabled = true;
+  document.getElementById('dropZone').classList.remove('has-file');
+  log('info', 'File removed');
+}
+
+function showProgress(message) {
+  document.getElementById('progressText').textContent = message;
+  document.getElementById('progressOverlay').style.display = 'flex';
+}
+
+function hideProgress() {
+  document.getElementById('progressOverlay').style.display = 'none';
+}
+
+function enhanceDropZone() {
+  const dropZone = document.getElementById('dropZone');
+  
+  // Add drag and drop visual feedback
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+  
+  // Add file input change animation
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      dropZone.classList.add('has-file');
+      setTimeout(() => {
+        dropZone.classList.remove('has-file');
+      }, 300);
+    }
+  });
+}
+
+function addMicroInteractions() {
+  // Add ripple effect to buttons
+  document.querySelectorAll('button').forEach(button => {
+    button.addEventListener('click', function(e) {
+      const ripple = document.createElement('span');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+      
+      ripple.style.cssText = `
+        position: absolute;
+        width: ${size}px;
+        height: ${size}px;
+        left: ${x}px;
+        top: ${y}px;
+        background: rgba(255,255,255,0.5);
+        border-radius: 50%;
+        transform: scale(0);
+        animation: ripple 0.6s ease-out;
+        pointer-events: none;
+      `;
+      
+      this.style.position = 'relative';
+      this.style.overflow = 'hidden';
+      this.appendChild(ripple);
+      
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+}
+
+// Add ripple animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// ── Initialize Interactive Features ──
+document.addEventListener('DOMContentLoaded', () => {
+  enhanceDropZone();
+  addMicroInteractions();
+  log('info', 'Interactive UI initialized');
 });
 
 // Format bytes helper
