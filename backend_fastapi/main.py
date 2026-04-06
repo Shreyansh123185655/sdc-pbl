@@ -11,7 +11,7 @@ import os
 import random
 import sys
 from pathlib import Path
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, Union
 
 # Add sample_data directory to path for importing converter
 sys.path.append(str(Path(__file__).parent.parent / "sample_data"))
@@ -73,9 +73,14 @@ def _parse_excel_bytes(file_bytes: bytes) -> list[dict]:
     return df.to_dict(orient="records")
 
 
-def _parse_excel(file: UploadFile) -> list[dict[str, Any]]:
+def _parse_excel(file: Union[UploadFile, bytes]) -> list[dict[str, Any]]:
     """Read Excel bytes → list of raw row dicts."""
-    df = pd.read_excel(io.BytesIO(file.file), dtype=str)
+    if hasattr(file, 'file'):
+        # It's an UploadFile object
+        df = pd.read_excel(io.BytesIO(file.file.read()), dtype=str)
+    else:
+        # It's bytes
+        df = pd.read_excel(io.BytesIO(file), dtype=str)
     df.columns = [c.strip() for c in df.columns]
     df.dropna(how="all", inplace=True)
     return df.to_dict(orient="records")
