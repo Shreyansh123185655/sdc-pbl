@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend_fastapi
+      dockerfile: Dockerfile
+    container_name: student-pdf-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - JAVA_SERVICE_URL=http://java-service:8081
+      - PORT=8000
+    depends_on:
+      - java-service
+    networks:
+      - student-pdf-network
+    restart: unless-stopped
+
+  # Java PDF Service
+  java-service:
+    build:
+      context: ./java_service
+      dockerfile: Dockerfile
+    container_name: student-pdf-java
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./java_service/output:/app/output
+    networks:
+      - student-pdf-network
+    restart: unless-stopped
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: student-pdf-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - student-pdf-network
+    restart: unless-stopped
+
+networks:
+  student-pdf-network:
+    driver: bridge
+
+volumes:
+  java-output:
+    driver: local

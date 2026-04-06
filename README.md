@@ -1,138 +1,129 @@
 # Student PDF Generator
 
-**Excel → PDF Generator with Universal Excel Support**
+🎓 Universal Excel to Student PDF Generator with Interactive UI
 
-A simple yet powerful application that converts any Excel file into individual student PDF question papers.
+## 🌐 Live Demo
 
----
+- **Frontend**: https://student-pdf-generator.vercel.app
+- **Backend API**: https://student-pdf-backend.onrender.com/docs
+- **API Health**: https://student-pdf-backend.onrender.com/health
 
 ## 🚀 Quick Start
 
-### **1. Clone & Setup**
-```bash
-git clone https://github.com/dibakarsinha/ShreyanshMinorProjectDemo.git
-cd student-pdf-generator
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-```
+### Prerequisites
+- Python 3.11+
+- Java 17+
+- Maven 3.6+
+- Docker Desktop (optional)
 
-### **2. Install Dependencies**
+### Local Setup
+
+#### 1. Backend (FastAPI)
 ```bash
-# Python dependencies
 cd backend_fastapi
-pip install fastapi uvicorn httpx pandas openpyxl python-multipart
-
-# Java service
-cd ../java_service
-mvn package -DskipTests
-
-# Go back to root
-cd ..
+source ../.venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### **3. Start Services**
+#### 2. Java Service
 ```bash
-# Terminal 1: Start Java service
 cd java_service
+mvn clean package
 java -jar target/student-pdf-service-1.0.0.jar --server.port=8081
-
-# Terminal 2: Start FastAPI
-source .venv/bin/activate
-cd backend_fastapi
-uvicorn main:app --port 8000
 ```
 
-### **4. Use the Application**
-Open browser: **http://localhost:8000/ui**
-
----
-
-## 📁 Project Structure
-
-```
-student-pdf-generator/
-├── frontend/                 # Web interface
-│   └── index.html         # Single-page app
-├── backend_fastapi/          # Python API
-│   └── main.py           # FastAPI server
-├── java_service/            # Java PDF generator
-│   └── target/
-│       └── student-pdf-service-1.0.0.jar
-├── sample_data/            # Utilities & examples
-└── output/                # Generated PDFs
+#### 3. Frontend
+```bash
+# Open in browser
+http://localhost:8000/ui
 ```
 
----
+## 🐳 Docker Deployment
+
+### Build & Run All Services
+```bash
+# Build all services
+docker-compose build
+
+# Start all services
+docker-compose up -d
+
+# Access at: http://localhost:8000
+```
+
+### Individual Services
+```bash
+# Backend only
+docker-compose up backend
+
+# Java service only
+docker-compose up java-service
+
+# Frontend only
+docker-compose up frontend
+```
+
+## 📦 VPS Deployment
+
+### 1. Export Docker Images
+```bash
+# Export images
+docker save student-pdf-backend:latest > backend.tar
+docker save student-pdf-java:latest > java.tar
+docker save student-pdf-frontend:latest > frontend.tar
+```
+
+### 2. Transfer to VPS
+```bash
+# Copy to VPS
+scp backend.tar user@vps-ip:/path/
+scp java.tar user@vps-ip:/path/
+scp frontend.tar user@vps-ip:/path/
+scp docker-compose.yml user@vps-ip:/path/
+```
+
+### 3. Import on VPS
+```bash
+# On VPS
+docker load < backend.tar
+docker load < java.tar
+docker load < frontend.tar
+
+# Start services
+docker-compose up -d
+```
 
 ## 🎯 Features
 
-### **Universal Excel Support**
-- **Any Excel format** works automatically
-- **Smart structure detection** 
-- **Automatic conversion** when needed
-- **Question bank support**
-- **Tabular data support**
+- ✅ Universal Excel Support (any format)
+- ✅ Smart Structure Detection
+- ✅ Interactive UI with animations
+- ✅ Real-time file analysis
+- ✅ PDF generation for individual students
+- ✅ Bulk download support
+- ✅ Docker containerization
 
-### **Advanced Configuration**
-- **Number of students** (1-50)
-- **Questions per student** (10-20)
-- **Question range selection**
-- **Shuffle options** (None/Random/Random Subset)
+## 📊 Project Structure
 
-### **File Management**
-- **Open output folder** directly
-- **List all PDFs** with download links
-- **Bulk download** all PDFs
-- **Individual file** downloads
+```
+student-pdf-generator/
+├── backend_fastapi/     # FastAPI backend
+├── java_service/        # Java PDF service
+├── frontend/           # Interactive web UI
+├── vercel-deploy/      # Vercel deployment
+├── docker-compose.yml  # Docker orchestration
+└── README.md          # This file
+```
+
+## 🔗 Links
+
+- **Live App**: https://student-pdf-generator.vercel.app
+- **GitHub**: https://github.com/Shreyansh123185655/sdc-pbl
+- **API Docs**: https://student-pdf-backend.onrender.com/docs
 
 ---
 
-## 📋 Excel File Formats
-
-### **Standard Format** (Works directly)
-```
-| Name | EnrollmentNo | Q1 | Q1_A | Q1_B | Q1_C | Q1_D | Q1_Answer |
-|-------|--------------|-----|-------|-------|-------|-------|------------|
-| John  | EN2024001    | ... | ...   | ...   | ...   | ...        |
-```
-
-### **Question Bank** (Auto-converted)
-```
-| QuestionText | OptionA | OptionB | OptionC | OptionD | CorrectAnswer |
-|-------------|----------|----------|----------|----------|---------------|
-| What is 2+2? | 3        | 4        | 5        | 6              | B
-```
-
-### **Any Other Format** (Auto-detected & converted)
-- Tabular data
-- Simple student format
-- Custom layouts
-- Mixed columns
-
----
-
-## 🛠️ Usage
-
-### **Web Interface**
-1. **Upload Excel file** - Drag & drop or click to browse
-2. **Configure settings** - Number of students, questions, shuffle
-3. **Generate PDFs** - Click generate button
-4. **Download files** - Use file directory buttons
-
-### **Command Line Tools**
-```bash
-# Convert any Excel file
-cd sample_data
-./convert_any_excel.sh your_file.xlsx
-
-# Analyze only
-./convert_any_excel.sh -a your_file.xlsx
-```
-
----
-
-## 🔧 Configuration
-
+**Made with ❤️ for educational institutions**
 ### **Java Service Port**
 ```bash
 # Default: 8081

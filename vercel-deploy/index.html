@@ -508,11 +508,11 @@
 
 <script>
 const API_BASE = () => {
-  // Development: Local backend (uncomment for local testing)
-  return 'http://localhost:8000';
+  // Production: Render backend
+  return 'https://student-pdf-backend.onrender.com';
   
-  // Production: Render backend (comment out for local testing)
-  // return 'https://student-pdf-backend.onrender.com';
+  // Development: Local backend (uncomment for local testing)
+  // return 'http://localhost:8000';
 };
 
 // ── Service health check ─────────────────────────────────────────────────────
