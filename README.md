@@ -8,7 +8,7 @@
 - **Backend API**: https://student-pdf-backend.onrender.com/docs
 - **API Health**: https://student-pdf-backend.onrender.com/health
 
-## 🚀 Quick Start
+## 🚀 Quick Installation & Setup
 
 ### Prerequisites
 - Python 3.11+
@@ -16,39 +16,55 @@
 - Maven 3.6+
 - Docker Desktop (optional)
 
-### Local Setup
+### One-Command Installation
 
-#### 1. Backend (FastAPI)
+#### Option 1: Automated Setup (Recommended)
 ```bash
-cd backend_fastapi
-source ../.venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 8000
+# Clone the repository
+git clone https://github.com/Shreyansh123185655/sdc-pbl.git
+cd sdc-pbl
+
+# Run automated setup
+chmod +x setup.sh
+./setup.sh
 ```
 
-#### 2. Java Service
+#### Option 2: Manual Setup
 ```bash
+# 1. Setup Python Environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r backend_fastapi/requirements.txt
+
+# 2. Build Java Service
 cd java_service
 mvn clean package
-java -jar target/student-pdf-service-1.0.0.jar --server.port=8081
+cd ..
+
+# 3. Start Services
+# Start Java Service
+cd java_service
+java -jar target/student-pdf-service-1.0.0.jar --server.port=8081 &
+
+# Start Backend
+cd backend_fastapi
+source ../.venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000 &
+
+# Start Frontend
+cd frontend
+python -m http.server 3000
 ```
 
-#### 3. Frontend
+## 🐳 Docker Deployment (All-in-One)
+
+### Quick Start
 ```bash
-# Open in browser
-http://localhost:8000/ui
-```
-
-## 🐳 Docker Deployment
-
-### Build & Run All Services
-```bash
-# Build all services
-docker-compose build
-
-# Start all services
+# Build and run all services
 docker-compose up -d
 
-# Access at: http://localhost:8000
+# Access application
+http://localhost:8000/ui
 ```
 
 ### Individual Services
@@ -65,71 +81,258 @@ docker-compose up frontend
 
 ## 📦 VPS Deployment
 
-### 1. Export Docker Images
+### One-Command VPS Deploy
 ```bash
-# Export images
-docker save student-pdf-backend:latest > backend.tar
-docker save student-pdf-java:latest > java.tar
-docker save student-pdf-frontend:latest > frontend.tar
-```
+# Export and deploy
+./export-for-vps.sh
 
-### 2. Transfer to VPS
-```bash
-# Copy to VPS
-scp backend.tar user@vps-ip:/path/
-scp java.tar user@vps-ip:/path/
-scp frontend.tar user@vps-ip:/path/
-scp docker-compose.yml user@vps-ip:/path/
-```
+# Transfer to VPS
+scp student-pdf-vps-deploy.tar.gz user@vps-ip:/opt/
 
-### 3. Import on VPS
-```bash
-# On VPS
-docker load < backend.tar
-docker load < java.tar
-docker load < frontend.tar
-
-# Start services
-docker-compose up -d
+# Deploy on VPS
+ssh user@vps-ip
+cd /opt
+tar -xzf student-pdf-vps-deploy.tar.gz
+cd docker-images
+./deploy-vps.sh
 ```
 
 ## 🎯 Features
 
-- ✅ Universal Excel Support (any format)
-- ✅ Smart Structure Detection
-- ✅ Interactive UI with animations
-- ✅ Real-time file analysis
-- ✅ PDF generation for individual students
-- ✅ Bulk download support
-- ✅ Docker containerization
+- ✅ **Universal Excel Support** - Handles any Excel format automatically
+- ✅ **Smart Structure Detection** - Identifies student vs question bank format
+- ✅ **Interactive UI** - Modern drag-and-drop interface
+- ✅ **Real-time Analysis** - Instant file structure feedback
+- ✅ **Format Conversion** - Question bank to student format
+- ✅ **PDF Generation** - Individual student papers
+- ✅ **Bulk Operations** - Process multiple students at once
+- ✅ **Mobile Responsive** - Works on all devices
 
 ## 📊 Project Structure
 
 ```
 student-pdf-generator/
-├── backend_fastapi/     # FastAPI backend
-├── java_service/        # Java PDF service
-├── frontend/           # Interactive web UI
-├── vercel-deploy/      # Vercel deployment
-├── docker-compose.yml  # Docker orchestration
-└── README.md          # This file
+├── 📁 backend_fastapi/           # FastAPI backend
+│   ├── main.py                 # Main FastAPI application
+│   ├── requirements.txt          # Python dependencies
+│   └── Dockerfile              # Docker configuration
+├── 📁 java_service/              # Java PDF service
+│   ├── src/main/java/          # Java source code
+│   ├── pom.xml                 # Maven configuration
+│   ├── target/                 # Compiled JAR file
+│   └── Dockerfile              # Docker configuration
+├── 📁 frontend/                 # Web interface
+│   ├── index.html              # Main application UI
+│   └── Dockerfile              # Docker configuration
+├── 📁 sample_data/              # Sample files and utilities
+│   ├── file1_basic_students.xlsx      # 10 students, 5 questions
+│   ├── file2_advanced_students.xlsx   # 15 students, 10 questions
+│   ├── file3_simple_students.xlsx    # 5 students, 3 questions
+│   ├── file4_complete_students.xlsx   # 8 students, 15 questions
+│   └── create_sample_files.py    # Generate sample files
+├── 📁 vercel-deploy/             # Vercel deployment files
+├── 🐳 docker-compose.yml         # Docker orchestration
+├── 🚀 setup.sh                  # Automated setup script
+└── 📖 README.md                 # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# Backend Configuration
+JAVA_SERVICE_URL=http://localhost:8081
+PORT=8000
+
+# Java Service Configuration
+SERVER_PORT=8081
+OUTPUT_DIRECTORY=/app/output
+```
+
+### Service URLs
+```bash
+# Development
+Frontend:  http://localhost:3000
+Backend:   http://localhost:8000
+Java:       http://localhost:8081
+
+# Production
+Frontend:  https://student-pdf-generator.vercel.app
+Backend:   https://student-pdf-backend.onrender.com
+```
+
+## � Usage Guide
+
+### 1. Upload Excel File
+- **Supported Formats**: .xlsx, .xls
+- **File Types**: Student format, Question bank format
+- **Method**: Drag & drop or click to browse
+
+### 2. Analyze File Structure
+- **Automatic Detection**: Identifies columns and format
+- **Confidence Score**: Shows detection accuracy
+- **Sample Data**: Preview of first few rows
+- **Recommendations**: Suggests next steps
+
+### 3. Convert Format (if needed)
+- **Question Bank → Student**: Converts automatically
+- **Customizable**: Number of students, questions per student
+- **Shuffle Options**: Random, subset, or none
+- **Preview**: Shows conversion results
+
+### 4. Generate PDFs
+- **Individual Papers**: One PDF per student
+- **Customizable**: Questions per student, shuffle mode
+- **Batch Processing**: Handle multiple students
+- **Download Options**: Individual or bulk ZIP
+
+## 🛠️ Development
+
+### Adding New Features
+```bash
+# Backend changes
+cd backend_fastapi
+# Edit main.py for new endpoints
+
+# Frontend changes
+cd frontend
+# Edit index.html for UI updates
+
+# Java service changes
+cd java_service
+# Edit Java files for PDF features
+```
+
+### Testing
+```bash
+# Test backend
+curl http://localhost:8000/health
+
+# Test Java service
+curl http://localhost:8081/api/status
+
+# Test file upload
+curl -X POST -F "file=@sample.xlsx" http://localhost:8000/analyze-excel
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### Backend Won't Start
+```bash
+# Check Python version
+python --version  # Should be 3.11+
+
+# Check dependencies
+pip install -r backend_fastapi/requirements.txt
+
+# Check port availability
+lsof -i :8000
+```
+
+#### Java Service Issues
+```bash
+# Check Java version
+java -version  # Should be 17+
+
+# Rebuild JAR
+cd java_service
+mvn clean package
+
+# Check Maven
+mvn --version  # Should be 3.6+
+```
+
+#### Frontend Issues
+```bash
+# Check if port is available
+lsof -i :3000
+
+# Start manually
+cd frontend
+python -m http.server 3000
+```
+
+## 📚 API Documentation
+
+### Main Endpoints
+```
+GET  /health                    # Service health check
+GET  /docs                      # API documentation
+POST /analyze-excel             # Analyze Excel file
+POST /convert-excel             # Convert Excel format
+POST /upload-advanced            # Generate PDFs
+GET  /java-status               # Java service status
+GET  /converter-info            # Converter information
+```
+
+### Request/Response Examples
+```javascript
+// Analyze Excel
+const formData = new FormData();
+formData.append('file', excelFile);
+
+const response = await fetch('/analyze-excel', {
+  method: 'POST',
+  body: formData
+});
+
+const result = await response.json();
+// Returns: { analysis, needs_conversion, ... }
+```
+
+## 🌐 Deployment
+
+### Vercel (Frontend)
+```bash
+# Deploy frontend
+cd vercel-deploy
+vercel --prod
+```
+
+### Render (Backend)
+```bash
+# Deploy backend
+# Connect GitHub repository to Render
+# Set root directory: backend_fastapi
+# Auto-deploys on push
+```
+
+### Docker Production
+```bash
+# Build images
+docker-compose build
+
+# Export for VPS
+./export-for-vps.sh
+
+# Deploy anywhere
+docker load < images.tar
+docker-compose up -d
 ```
 
 ## 🔗 Links
 
-- **Live App**: https://student-pdf-generator.vercel.app
-- **GitHub**: https://github.com/Shreyansh123185655/sdc-pbl
-- **API Docs**: https://student-pdf-backend.onrender.com/docs
+- **📱 Live App**: https://student-pdf-generator.vercel.app
+- **📚 API Docs**: https://student-pdf-backend.onrender.com/docs
+- **🐙 Docker Hub**: [Add your Docker Hub repo]
+- **📋 Issues**: [GitHub Issues](https://github.com/Shreyansh123185655/sdc-pbl/issues)
+
+## 📄 License
+
+MIT License - Free to use, modify, and distribute
 
 ---
 
-**Made with ❤️ for educational institutions**
+**🎓 Made with ❤️ for educational institutions**
+
+**🚀 Universal Excel to PDF Generation Made Simple**
 ### **Java Service Port**
 ```bash
 # Default: 8081
 java -jar target/student-pdf-service-1.0.0.jar --server.port=8081
 ```
-
 ### **FastAPI Port**
 ```bash
 # Default: 8000

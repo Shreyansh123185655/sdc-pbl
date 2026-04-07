@@ -78,84 +78,95 @@ if [ ! -d ".venv" ]; then
     print_info "Creating virtual environment..."
     python3 -m venv .venv || python -m venv .venv
     print_status "Virtual environment created"
-else
-    print_status "Virtual environment already exists"
-fi
-
-# Activate virtual environment
-print_info "Activating virtual environment..."
 source .venv/bin/activate
-print_status "Virtual environment activated"
 
-print_info "Step 3: Installing Python dependencies..."
+# Install Python dependencies
+echo "📦 Installing Python dependencies..."
+pip install --upgrade pip
+pip install -r backend_fastapi/requirements.txt
 
-# Navigate to backend and install dependencies
-cd backend_fastapi
-
-print_info "Installing FastAPI dependencies..."
-pip install fastapi==0.111.0
-pip install uvicorn[standard]==0.24.0
-pip install httpx==0.25.2
-pip install pandas==2.2.1
-pip install openpyxl==3.1.5
-pip install python-multipart==0.0.9
-pip install rich==13.7.1
-pip install rich-toolkit==0.14.8
-
-print_status "Python dependencies installed"
-
-cd ..
-
-print_info "Step 4: Building Java service..."
-
+# Build Java service
+echo "☕ Building Java service..."
 cd java_service
-
-print_info "Compiling Java service..."
-mvn clean compile -DskipTests
-
-print_info "Packaging Java service..."
-mvn package -DskipTests
-
-if [ -f "target/student-pdf-service-1.0.0.jar" ]; then
-    print_status "Java service built successfully"
-else
-    print_error "Java service build failed"
-    exit 1
-fi
-
+mvn clean package -q
 cd ..
 
-print_info "Step 5: Generating sample data..."
+# Create output directories
+echo "📁 Creating output directories..."
+mkdir -p java_service/output
+mkdir -p output
 
-cd sample_data
+# Start services
+echo "🚀 Starting services..."
 
-# Install openpyxl for sample data generation
-pip install openpyxl==3.1.5
-
-print_info "Generating sample Excel file..."
-python generate_sample.py
-
-if [ -f "students_sample.xlsx" ]; then
-    print_status "Sample data generated"
-else
-    print_warning "Sample data generation failed (optional)"
-fi
-
+# Start Java service in background
+echo "Starting Java service on port 8081..."
+cd java_service
+java -jar target/student-pdf-service-1.0.0.jar --server.port=8081 > ../output/java-service.log 2>&1 &
+JAVA_PID=$!
 cd ..
 
+# Wait a moment for Java service to start
+sleep 3
+
+# Start FastAPI backend in background
+echo "Starting FastAPI backend on port 8000..."
+cd backend_fastapi
+source ../.venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000 > ../output/backend.log 2>&1 &
+BACKEND_PID=$!
+cd ..
+
+# Wait a moment for backend to start
+sleep 3
+
+# Start frontend
+echo "🌐 Starting frontend on port 3000..."
+cd frontend
+python3 -m http.server 3000 > ../output/frontend.log 2>&1 &
+FRONTEND_PID=$!
+cd ..
+
+# Wait for services to be ready
+echo "⏳ Waiting for services to start..."
+sleep 5
+
+# Test services
+echo "🏥 Testing service health..."
+
+# Test backend
+if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+    echo "✅ Backend is healthy"
+else
+    echo "❌ Backend is not responding"
+fi
+
+# Test Java service
+if curl -s http://localhost:8081/api/status > /dev/null 2>&1; then
+    echo "✅ Java service is healthy"
+else
+    echo "❌ Java service is not responding"
+fi
+
+# Test frontend
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200"; then
+    echo "✅ Frontend is running"
+else
+    echo "❌ Frontend is not responding"
+fi
+
 echo ""
-print_status "🎉 Setup completed successfully!"
+echo "🎉 Setup completed!"
 echo ""
-echo "📋 Next Steps:"
-echo "1. Open Terminal 1 and run:"
-echo "   cd java_service && java -jar target/student-pdf-service-1.0.0.jar --server.port=8081"
+echo "🌐 Access your application:"
+echo "   Frontend:  http://localhost:3000"
+echo "   Backend:   http://localhost:8000/docs"
+echo "   API:       http://localhost:8000"
 echo ""
-echo "2. Open Terminal 2 and run:"
-echo "   source .venv/bin/activate && cd backend_fastapi && uvicorn main:app --port 8000"
+echo "� Service management:"
+echo "   Stop all:  kill $JAVA_PID $BACKEND_PID $FRONTEND_PID"
+echo "   View logs:  tail -f output/*.log"
 echo ""
-echo "3. Open your browser and navigate to:"
-echo "   http://localhost:8000/ui"
+echo "📖 For more information, see README.md"
 echo ""
-echo "📁 Generated files will be saved in: java_service/output/"
-echo ""
-print_info "You can now start using the Student PDF Generator!"
+echo "✅ Student PDF Generator is ready to use!"
