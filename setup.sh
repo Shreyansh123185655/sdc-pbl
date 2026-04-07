@@ -1,13 +1,8 @@
 #!/bin/bash
 
-# Student PDF Generator - Quick Setup Script
-# This script automates the complete setup process
-
-set -e  # Exit on any error
-
-echo "🚀 Student PDF Generator - Quick Setup"
-echo "====================================="
-echo ""
+# Student PDF Generator - Automated Setup Script
+echo "🎓 Student PDF Generator - Automated Setup"
+echo "======================================"
 
 # Colors for output
 RED='\033[0;31m'
@@ -33,84 +28,78 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# Check if we're in the right directory
-if [ ! -f "README.md" ] || [ ! -d "backend_fastapi" ] || [ ! -d "java_service" ]; then
-    print_error "Please run this script from the student-pdf-generator root directory"
+# Check if Python is installed
+if ! command -v python3 &> /dev/null; then
+    print_error "Python 3 is not installed. Please install Python 3.11+ first."
+    echo "Visit: https://www.python.org/downloads/"
     exit 1
 fi
 
-print_info "Step 1: Verifying prerequisites..."
-
-# Check Python version
-if command -v python3 &> /dev/null; then
-    PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
-    print_status "Python found: $PYTHON_VERSION"
-elif command -v python &> /dev/null; then
-    PYTHON_VERSION=$(python --version | cut -d' ' -f2)
-    print_status "Python found: $PYTHON_VERSION"
-else
-    print_error "Python not found. Please install Python 3.9+"
+# Check if Java is installed
+if ! command -v java &> /dev/null; then
+    print_error "Java is not installed. Please install Java 17+ first."
+    echo "Visit: https://www.java.com/download/"
     exit 1
 fi
 
-# Check Java version
-if command -v java &> /dev/null; then
-    JAVA_VERSION=$(java -version 2>&1 | head -n1 | cut -d'"' -f2)
-    print_status "Java found: $JAVA_VERSION"
-else
-    print_error "Java not found. Please install Java 17+"
+# Check if Maven is installed
+if ! command -v mvn &> /dev/null; then
+    print_error "Maven is not installed. Please install Maven 3.6+ first."
+    echo "Visit: https://maven.apache.org/download.cgi"
     exit 1
 fi
 
-# Check Maven
-if command -v mvn &> /dev/null; then
-    MAVEN_VERSION=$(mvn --version | head -n1 | cut -d' ' -f3)
-    print_status "Maven found: $MAVEN_VERSION"
-else
-    print_error "Maven not found. Please install Maven 3.8+"
-    exit 1
-fi
+print_status "All prerequisites found!"
 
-print_info "Step 2: Setting up Python virtual environment..."
-
-# Create virtual environment if it doesn't exist
-if [ ! -d ".venv" ]; then
-    print_info "Creating virtual environment..."
-    python3 -m venv .venv || python -m venv .venv
-    print_status "Virtual environment created"
+# Create virtual environment
+echo ""
+print_info "Creating Python virtual environment..."
+python3 -m venv .venv
 source .venv/bin/activate
 
 # Install Python dependencies
-echo "📦 Installing Python dependencies..."
+print_info "Installing Python dependencies..."
 pip install --upgrade pip
 pip install -r backend_fastapi/requirements.txt
 
 # Build Java service
-echo "☕ Building Java service..."
+print_info "Building Java service..."
 cd java_service
 mvn clean package -q
 cd ..
 
 # Create output directories
-echo "📁 Creating output directories..."
+print_info "Creating output directories..."
 mkdir -p java_service/output
 mkdir -p output
 
 # Start services
-echo "🚀 Starting services..."
+echo ""
+print_info "Starting services..."
 
-# Start Java service in background
-echo "Starting Java service on port 8081..."
-cd java_service
-java -jar target/student-pdf-service-1.0.0.jar --server.port=8081 > ../output/java-service.log 2>&1 &
-JAVA_PID=$!
-cd ..
+# Start Java service in background with PM2 (if available)
+if command -v pm2 &> /dev/null; then
+    print_status "Using PM2 for Java service (auto-restart enabled)"
+    cd java_service
+    pm2 start "java -jar target/student-pdf-service-1.0.0.jar --server.port=8081" --name student-pdf-java
+    pm2 save
+    cd ..
+    JAVA_PID="PM2 Managed"
+else
+    print_warning "PM2 not found, using basic background process"
+    print_info "Install PM2 for auto-restart: npm install -g pm2"
+    print_info "Starting Java service on port 8081..."
+    cd java_service
+    java -jar target/student-pdf-service-1.0.0.jar --server.port=8081 > ../output/java-service.log 2>&1 &
+    JAVA_PID=$!
+    cd ..
+fi
 
 # Wait a moment for Java service to start
 sleep 3
 
 # Start FastAPI backend in background
-echo "Starting FastAPI backend on port 8000..."
+print_info "Starting FastAPI backend on port 8000..."
 cd backend_fastapi
 source ../.venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000 > ../output/backend.log 2>&1 &
@@ -121,52 +110,63 @@ cd ..
 sleep 3
 
 # Start frontend
-echo "🌐 Starting frontend on port 3000..."
+print_info "Starting frontend on port 3000..."
 cd frontend
 python3 -m http.server 3000 > ../output/frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
 # Wait for services to be ready
-echo "⏳ Waiting for services to start..."
+print_info "Waiting for services to start..."
 sleep 5
 
 # Test services
-echo "🏥 Testing service health..."
+echo ""
+print_info "Testing service health..."
 
 # Test backend
 if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-    echo "✅ Backend is healthy"
+    print_status "Backend is healthy"
 else
-    echo "❌ Backend is not responding"
+    print_error "Backend is not responding"
 fi
 
 # Test Java service
 if curl -s http://localhost:8081/api/status > /dev/null 2>&1; then
-    echo "✅ Java service is healthy"
+    print_status "Java service is healthy"
 else
-    echo "❌ Java service is not responding"
+    print_error "Java service is not responding"
 fi
 
 # Test frontend
 if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200"; then
-    echo "✅ Frontend is running"
+    print_status "Frontend is running"
 else
-    echo "❌ Frontend is not responding"
+    print_error "Frontend is not responding"
 fi
 
 echo ""
-echo "🎉 Setup completed!"
+print_status "Setup completed!"
 echo ""
-echo "🌐 Access your application:"
-echo "   Frontend:  http://localhost:3000"
-echo "   Backend:   http://localhost:8000/docs"
-echo "   API:       http://localhost:8000"
+echo -e "${GREEN}🌐 Access your application:${NC}"
+echo -e "   Frontend:  ${BLUE}http://localhost:3000${NC}"
+echo -e "   Backend:   ${BLUE}http://localhost:8000/docs${NC}"
+echo -e "   API:       ${BLUE}http://localhost:8000${NC}"
 echo ""
-echo "� Service management:"
-echo "   Stop all:  kill $JAVA_PID $BACKEND_PID $FRONTEND_PID"
-echo "   View logs:  tail -f output/*.log"
+echo -e "${GREEN}🔧 Service management:${NC}"
+if [ "$JAVA_PID" = "PM2 Managed" ]; then
+    echo -e "   Java service: ${BLUE}pm2 status student-pdf-java${NC}"
+    echo -e "   Restart Java:  ${BLUE}pm2 restart student-pdf-java${NC}"
+    echo -e "   View logs:    ${BLUE}pm2 logs student-pdf-java${NC}"
+else
+    echo -e "   Stop all:  ${BLUE}kill $JAVA_PID $BACKEND_PID $FRONTEND_PID${NC}"
+    echo -e "   View logs:  ${BLUE}tail -f output/*.log${NC}"
+fi
 echo ""
-echo "📖 For more information, see README.md"
+echo -e "${GREEN}� Java Service Always Live Options:${NC}"
+echo -e "   📖 Guide: ${BLUE}JAVA_SERVICE_ALWAYS_LIVE.md${NC}"
+echo -e "   🌐 Render:  ${BLUE}https://dashboard.render.com${NC}"
+echo -e "   🖥️  PM2:     ${BLUE}pm2 start student-pdf-java${NC}"
+echo -e "   🐳 Docker:  ${BLUE}docker-compose up java-service${NC}"
 echo ""
-echo "✅ Student PDF Generator is ready to use!"
+print_status "Student PDF Generator is ready to use!"

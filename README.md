@@ -136,7 +136,54 @@ student-pdf-generator/
 └── 📖 README.md                 # This file
 ```
 
-## 🔧 Configuration
+## � Java Service Always Live
+
+### 🎯 Keep Java Service Running 24/7
+
+**📖 Complete Guide**: [JAVA_SERVICE_ALWAYS_LIVE.md](JAVA_SERVICE_ALWAYS_LIVE.md)
+
+#### 🌟 Recommended Options:
+1. **Render Cloud** (Best for production)
+2. **PM2 Process Manager** (Best for local)
+3. **Docker Auto-restart** (Best for containers)
+4. **Systemd Service** (Best for VPS)
+5. **Cron Auto-restart** (Best for monitoring)
+
+#### 🚀 Quick Commands:
+```bash
+# Render deployment
+# Connect repository to Render with root: java_service
+
+# PM2 local management
+pm2 start student-pdf-java
+pm2 save
+pm2 monit
+
+# Docker with restart
+docker-compose up -d java-service
+
+# Systemd service
+sudo systemctl enable student-pdf-java
+sudo systemctl start student-pdf-java
+```
+
+### 📊 Service Health Monitoring:
+```bash
+# Health check endpoint
+curl http://localhost:8081/api/status
+
+# PM2 monitoring
+pm2 status student-pdf-java
+pm2 logs student-pdf-java
+
+# Docker monitoring
+docker-compose ps java-service
+docker-compose logs java-service
+```
+
+---
+
+## �🔧 Configuration
 
 ### Environment Variables
 ```bash

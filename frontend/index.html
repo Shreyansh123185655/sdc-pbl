@@ -387,12 +387,6 @@
         <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px;">
           <h4 style="color:var(--text); margin-bottom:8px; font-size:0.85rem;">🔍 File Analysis</h4>
           <div id="analysisContent" style="font-family:var(--mono); font-size:0.75rem; color:var(--muted);"></div>
-          <div id="conversionActions" style="margin-top:12px; display:none;">
-            <button class="btn-preview" id="btnConvertFile" style="margin-right:8px;">
-              🔄 Convert to Standard Format
-            </button>
-            <button class="btn-preview" id="btnUseAsIs" style="background:var(--ok);">
-              ✅ Use As Is
             </button>
             <button class="btn-preview" id="btnConvertAndGenerate" style="background:var(--accent);">
               ⚡ Convert & Generate PDFs
@@ -726,10 +720,142 @@ function removeFile() {
   currentFile = null;
   document.getElementById('fileInput').value = '';
   document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('progressOverlay').style.display = 'none';
   document.getElementById('fileAnalysis').style.display = 'none';
-  document.getElementById('btnGenerate').disabled = true;
-  document.getElementById('dropZone').classList.remove('has-file');
-  log('info', 'File removed');
+  document.getElementById('convertSection').style.display = 'none';
+  document.getElementById('generateSection').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('configSection').style.display = 'none';
+  document.getElementById('advancedOptions').style.display = 'none';
+  document.getElementById('btnPreview').style.display = 'none';
+  currentFile = null;
+  log('info', 'File removed successfully');
+}
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+function log(type, msg) {
+  const panel = document.getElementById('logPanel');
+  panel.style.display = 'block';
+  const now = new Date().toLocaleTimeString('en-GB', {hour12:false});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">[${now}]</span><span class="log-${type}">${msg}</span>`;
+  panel.appendChild(line);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ── Progress ─────────────────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  const wrap = document.getElementById('progressWrap');
+  wrap.style.display = 'block';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+function showAlert(type, msg) {
+  const el = document.getElementById(type === 'err' ? 'alertErr' : 'alertOk');
+  el.style.display = 'block';
+  el.innerHTML = msg;
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function clearAlerts() {
+  document.getElementById('alertErr').style.display = 'none';
+  document.getElementById('alertOk').style.display  = 'none';
+}
+
+// ── Generate ─────────────────────────────────────────────────────────────────
+document.getElementById('btnGenerate').addEventListener('click', async () => {
+  const file = fileInput.files[0];
+  if (!file) { showAlert('err', '⚠️ Please select an Excel file first.'); return; }
+
+  // Get configuration values
+  const numStudents = parseInt(document.getElementById('numStudents').value);
+  const questionsPerStudent = parseInt(document.getElementById('questionsPerStudent').value);
+  const questionStart = parseInt(document.getElementById('questionStart').value);
+  const questionEnd = parseInt(document.getElementById('questionEnd').value);
+  const shuffleMode = document.getElementById('shuffleMode').value;
+
+  // Validate configuration
+  if (questionStart > questionEnd) {
+    showAlert('err', '⚠️ Question start must be less than or equal to question end.');
+    return;
+  }
+
+  if (questionsPerStudent < 10 || questionsPerStudent > 20) {
+    showAlert('err', '⚠️ Questions per student must be between 10 and 20.');
+    return;
+  }
+
+  if (numStudents < 1 || numStudents > 50) {
+    showAlert('err', '⚠️ Number of students must be between 1 and 50.');
+    return;
+  }
+
+  clearAlerts();
+  document.getElementById('resultsCard').style.display = 'none';
+
+  const btn     = document.getElementById('btnGenerate');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('spinner');
+
+  btn.disabled  = true;
+  btnText.style.display = 'none';
+  spinner.style.display = 'block';
+
+  log('info', `Starting advanced upload: ${numStudents} students, ${questionsPerStudent} questions each, ${shuffleMode} shuffle`);
+  setProgress(10, 'Uploading Excel file…');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('num_students', numStudents);
+    formData.append('questions_per_student', questionsPerStudent);
+    formData.append('question_start', questionStart);
+    formData.append('question_end', questionEnd);
+    formData.append('shuffle_mode', shuffleMode);
+
+    // Use the advanced upload endpoint with configuration
+    const response = await fetch(`${API_BASE()}/upload-advanced`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      log('ok', `✅ ${data.processedStudentCount} PDFs generated successfully!`);
+      showAlert('ok', `✅ <strong>${data.processedStudentCount} PDFs generated!</strong><br>Configuration: ${data.configuration.shuffle_mode} shuffle, ${data.originalStudentCount}→${data.processedStudentCount} students`);
+
+      // Hide analysis and show results
+      document.getElementById('fileAnalysis').style.display = 'none';
+      renderResults(data);
+    } else {
+      log('err', `Convert & Generate failed: ${data.detail}`);
+      showAlert('err', `❌ <strong>Error:</strong> ${data.detail}`);
+    }
+  } catch (err) {
+    log('err', 'Convert & Generate error: ' + err.message);
+    showAlert('err', `❌ <strong>Error:</strong> ${err.message}`);
+  }
+});
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  document.getElementById('fileName').textContent = f.name;
+  document.getElementById('fileBadge').style.display = 'inline-flex';
+  log('info', `File selected: ${f.name} (${(f.size/1024).toFixed(1)} KB)`);
 }
 
 function showProgress(message) {
@@ -829,24 +955,6 @@ function formatBytes(bytes) {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// ── Drag & drop ──────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
-
-function setFile(f) {
-  document.getElementById('fileName').textContent = f.name;
-  document.getElementById('fileBadge').style.display = 'inline-flex';
-  log('info', `File selected: ${f.name} (${(f.size/1024).toFixed(1)} KB)`);
 }
 
 // ── Logging ──────────────────────────────────────────────────────────────────
