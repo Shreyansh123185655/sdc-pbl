@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: student-pdf-backend
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - JAVA_SERVICE_URL=http://java-service:8081
       - PORT=8000
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: student-pdf-frontend
     ports:
-      - "3000:80"
+      - "3001:80"
     depends_on:
       - backend
     networks:

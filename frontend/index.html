@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Student PDF Generator</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<meta name="version" content="v2.1-local-fix-$(date)"/>
+<title>Student PDF Generator - LOCAL BACKEND</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
 <style>
   :root{
@@ -359,27 +363,44 @@
     <!-- Upload card -->
     <div class="card">
       <p class="card-title">// 01 — Upload Excel File (Universal Support)</p>
+      
+      <!-- File Stats -->
+      <div id="fileStats" style="display:none; margin-bottom:16px; padding:12px; background:var(--surface2); border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="color:var(--accent2); font-weight:600;">📊 File Information</span>
+          <button id="btnClearFile" style="background:var(--err); color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">✕ Clear</button>
+        </div>
+        <div id="fileInfo" style="font-size:0.85rem; color:var(--text);"></div>
+      </div>
 
+      <!-- File Upload Section -->
       <div class="drop-zone" id="dropZone">
-        <input type="file" id="fileInput" accept=".xlsx,.xls"/>
         <div class="drop-content">
-          <span class="drop-icon">📊</span>
-          <h3>Drop any Excel file here</h3>
-          <p>Automatic format detection • Smart conversion • One-click PDF generation</p>
-          <button class="btn-browse" onclick="document.getElementById('fileInput').click()">
-            📁 Browse Files
-          </button>
+          <div style="font-size:3rem; margin-bottom:8px;">📄</div>
+          <p style="margin:8px 0; color:var(--text); font-weight:500;">Drop any Excel file here</p>
+          <p style="margin:4px 0; color:var(--muted); font-size:0.85rem;">Automatic format detection • Smart conversion • One-click PDF generation</p>
         </div>
-        <div class="file-badge" id="fileBadge" style="display:none">
-          <span>📎</span><span id="fileName"></span>
-          <button class="remove-file" onclick="removeFile()">✕</button>
-        </div>
-        <div class="progress-overlay" id="progressOverlay" style="display:none">
-          <div class="progress-content">
-            <div class="progress-spinner"></div>
-            <p id="progressText">Processing...</p>
-          </div>
-        </div>
+      </div>
+      
+      <!-- File Input (Hidden) -->
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;"/>
+      
+      <!-- Browse Button -->
+      <div style="text-align:center; margin-top:16px;">
+        <button class="btn-browse" id="btnBrowseFiles" style="background:var(--accent2); border:2px solid var(--accent); color:white; padding:10px 20px; border-radius:8px; font-weight:600; cursor:pointer; transition:all 0.3s ease;">
+          📁 Browse Files
+        </button>
+      </div>
+      
+      <!-- File Badge -->
+      <div class="file-badge" id="fileBadge" style="display:none;">
+        <span id="fileName"></span>
+        <button id="removeFile" style="background:none; border:none; color:var(--text); cursor:pointer; font-size:1.2rem; margin-left:8px;">✕</button>
+      </div>
+      
+      <!-- Progress Text -->
+      <div style="text-align:center; margin-top:8px; display:none;" id="progressTextContainer">
+        <p id="progressText" style="color:var(--accent2); font-weight:600;">Ready to upload files</p>
       </div>
       
       <!-- File Analysis Section -->
@@ -401,45 +422,74 @@
       <p class="card-title">// 02 — Configuration</p>
       <div class="config-grid">
         <div class="field">
-          <label>FastAPI Backend URL</label>
-          <input type="text" id="apiUrl" value="http://localhost:8000"/>
+          <label>🔗 FastAPI Backend URL</label>
+          <input type="text" id="apiUrl" value="http://localhost:8001" style="background:var(--surface2); border:2px solid var(--accent); color:var(--accent2); padding:8px; border-radius:6px; font-weight:600;"/>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">✅ Auto-configured for local development</small>
         </div>
         <div class="field">
           <label>Output Folder (Java side)</label>
           <input type="text" id="outFolder" value="./output" readonly/>
         </div>
         <div class="field">
-          <label>Number of Students</label>
-          <input type="number" id="numStudents" value="5" min="1" max="50"/>
+          <label>👥 Number of Students</label>
+          <input type="number" id="numStudents" value="5" min="1" max="50" style="background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;"/>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">📊 Auto-calculated from Excel file</small>
         </div>
         <div class="field">
-          <label>Questions per Student</label>
-          <input type="number" id="questionsPerStudent" value="15" min="10" max="20"/>
+          <label>📝 Questions per Student</label>
+          <input type="number" id="questionsPerStudent" value="15" min="10" max="20" style="background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;"/>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">⚡ Optimized for exam papers</small>
         </div>
         <div class="field">
-          <label>Question Range (Start-End)</label>
+          <label>🎯 Question Range (Start-End)</label>
           <div style="display:flex; gap:8px; align-items:center;">
-            <input type="number" id="questionStart" value="1" min="1" style="flex:1;"/>
-            <span style="color:var(--muted);">to</span>
-            <input type="number" id="questionEnd" value="20" min="1" style="flex:1;"/>
+            <input type="number" id="questionStart" value="1" min="1" style="flex:1; background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;"/>
+            <span style="color:var(--muted); font-weight:600; padding:0 8px;">→</span>
+            <input type="number" id="questionEnd" value="20" min="1" style="flex:1; background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;"/>
           </div>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">📋 Total: 20 questions available</small>
         </div>
         <div class="field">
-          <label>Shuffle Questions</label>
-          <select id="shuffleMode" style="width:100%;">
-            <option value="none">No Shuffle (Same order for all)</option>
-            <option value="random">Random Order (Each student gets different order)</option>
-            <option value="random_subset">Random Subset (Different questions per student)</option>
+          <label>🎲 Shuffle Questions</label>
+          <select id="shuffleMode" style="width:100%; background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;">
+            <option value="none">🔒 No Shuffle (Same order for all)</option>
+            <option value="random">🎰 Random Order (Each student gets different order)</option>
+            <option value="random_subset">🎲 Random Subset (Different questions per student)</option>
           </select>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">🔄 Prevents cheating in exams</small>
         </div>
       </div>
       
       <!-- Advanced Options -->
       <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+        <h4 style="color:var(--text); margin-bottom:12px; font-size:0.9rem;">⚙️ Advanced Options</h4>
+        
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
           <input type="checkbox" id="enablePreview" style="width:16px; height:16px;"/>
           <label for="enablePreview" style="margin:0; font-size:0.85rem;">Show preview before generation</label>
         </div>
+        
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          <input type="checkbox" id="enableWatermark" style="width:16px; height:16px;"/>
+          <label for="enableWatermark" style="margin:0; font-size:0.85rem;">Add watermark to PDFs</label>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          <input type="checkbox" id="enableTimestamp" style="width:16px; height:16px;"/>
+          <label for="enableTimestamp" style="margin:0; font-size:0.85rem;">Include timestamp in filename</label>
+        </div>
+        
+        <div class="field" style="margin-bottom:12px;">
+          <label>📄 PDF Template</label>
+          <select id="pdfTemplate" style="width:100%; background:var(--surface2); border:2px solid var(--border); color:var(--accent2); padding:8px; border-radius:6px;">
+            <option value="standard">📋 Standard Template</option>
+            <option value="exam">📝 Exam Template</option>
+            <option value="assignment">📚 Assignment Template</option>
+            <option value="custom">🎨 Custom Template</option>
+          </select>
+          <small style="color:var(--muted); font-size:0.75rem; display:block; margin-top:4px;">📐 Professional layouts for different use cases</small>
+        </div>
+        
         <button class="btn-preview" id="btnPreview" style="display:none;">
           👁️ Preview Question Distribution
         </button>
@@ -459,6 +509,7 @@
           <div class="progress-fill" id="progressFill"></div>
         </div>
         <div class="progress-label" id="progressLabel">Initialising…</div>
+        <div class="progress-text" id="progressText">0% - Ready</div>
       </div>
 
       <div class="log-panel" id="logPanel" style="margin-top:16px"></div>
@@ -501,24 +552,64 @@
 </div>
 
 <script>
+// AGGRESSIVE LOCAL BACKEND OVERRIDE - BYPASS ALL CACHE - NEW PORTS
+window.API_BASE_OVERRIDE = 'http://localhost:8001';
+window.RENDER_BACKEND_DISABLED = true;
+window.NEW_PORTS_ACTIVE = true;
+
+// Override fetch to intercept all requests
+const originalFetch = window.fetch;
+window.fetch = function(url, options) {
+  // Force replace any Render backend URL with local backend
+  if (typeof url === 'string' && url.includes('student-pdf-backend.onrender.com')) {
+    const newUrl = url.replace('https://student-pdf-backend.onrender.com', 'http://localhost:8001');
+    console.log('🔄 INTERCEPTED (Render → Local):', url, '→', newUrl);
+    return originalFetch.call(this, newUrl, options);
+  }
+  // Force replace old port with new port
+  if (typeof url === 'string' && url.includes('localhost:8000')) {
+    const newUrl = url.replace('localhost:8000', 'localhost:8001');
+    console.log('🔄 INTERCEPTED (Port 8000 → 8001):', url, '→', newUrl);
+    return originalFetch.call(this, newUrl, options);
+  }
+  return originalFetch.call(this, url, options);
+};
+
 const API_BASE = () => {
-  // Use local backend for full functionality
-  return 'http://localhost:8001';
+  // Force local backend - override any cached values
+  const apiUrl = window.API_BASE_OVERRIDE || 'http://localhost:8001';
+  console.log('🔗 FORCED API URL (NEW PORT):', apiUrl);
+  console.log('🚫 RENDER BACKEND DISABLED:', window.RENDER_BACKEND_DISABLED);
+  console.log('🔧 NEW PORTS ACTIVE:', window.NEW_PORTS_ACTIVE);
+  return apiUrl;
   
-  // Production: Render backend (limited for now)
+  // Production: Render backend (COMPLETELY DISABLED)
   // return 'https://student-pdf-backend.onrender.com';
 };
+
+// Force reload to clear cache
+console.log('API_BASE updated to:', API_BASE());
 
 // ── Service health check ─────────────────────────────────────────────────────
 async function checkServices() {
   const dot   = document.getElementById('svcDot');
   const label = document.getElementById('svcLabel');
+  const apiUrl = API_BASE();
+  console.log('Checking services at:', apiUrl);
+  
   try {
     const [fastapiRes, javaRes] = await Promise.all([
-      fetch(`${API_BASE()}/health`).then(r => r.ok),
-      fetch(`${API_BASE()}/java-status`).then(r => r.json())
+      fetch(`${apiUrl}/health`).then(r => {
+        console.log('FastAPI health response:', r.ok);
+        return r.ok;
+      }),
+      fetch(`${apiUrl}/java-status`).then(r => {
+        console.log('Java status response:', r);
+        return r.json();
+      })
     ]);
     const javaOk = javaRes.java_service === 'reachable';
+    console.log('Service check results:', { fastapiRes, javaOk });
     if (fastapiRes && javaOk) {
       dot.className = 'dot ok'; label.textContent = 'All services online';
     } else if (fastapiRes) {
@@ -538,12 +629,51 @@ let currentFile = null;
 let fileAnalysis = null;
 
 // Enhanced file input handler with analysis
+function setProgress(percent, text) {
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressText = document.getElementById('progressText');
+  
+  progressWrap.style.display = 'block';
+  progressFill.style.width = percent + '%';
+  progressLabel.textContent = text;
+  
+  // Update progress text if exists
+  if (progressText) {
+    progressText.textContent = `${percent}% - ${text}`;
+  }
+  
+  // Add pulsing animation to progress
+  progressFill.style.transition = 'width 0.3s ease';
+}
+
 function setFile(file){
   currentFile = file;
   const badge = document.getElementById('fileBadge');
   const fileName = document.getElementById('fileName');
+  const fileStats = document.getElementById('fileStats');
+  const fileInfo = document.getElementById('fileInfo');
+  
   fileName.textContent = file.name;
   badge.style.display = 'flex';
+  
+  // Show file statistics
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  const isValidFile = ['xlsx', 'xls'].includes(fileExtension);
+  
+  fileInfo.innerHTML = `
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;">
+      <div><strong>📁 Name:</strong> ${file.name}</div>
+      <div><strong>📏 Size:</strong> ${formatBytes(file.size)}</div>
+      <div><strong>📄 Type:</strong> ${fileExtension.toUpperCase()}</div>
+      <div><strong>✅ Valid:</strong> <span style="color:${isValidFile ? 'var(--ok)' : 'var(--err)'}">${isValidFile ? 'Yes' : 'No'}</span></div>
+      <div><strong>📅 Modified:</strong> ${new Date(file.lastModified).toLocaleString()}</div>
+      <div><strong>🔍 Status:</strong> <span style="color:var(--accent2)">Ready for analysis</span></div>
+    </div>
+  `;
+  fileStats.style.display = 'block';
+  
   document.getElementById('btnGenerate').disabled = false;
   log('info', `File selected: ${file.name} (${formatBytes(file.size)})`);
   
@@ -744,26 +874,6 @@ function log(type, msg) {
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ── Progress ─────────────────────────────────────────────────────────────────
-function setProgress(pct, label) {
-  const wrap = document.getElementById('progressWrap');
-  wrap.style.display = 'block';
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = label;
-}
-
-// ── Alerts ───────────────────────────────────────────────────────────────────
-function showAlert(type, msg) {
-  const el = document.getElementById(type === 'err' ? 'alertErr' : 'alertOk');
-  el.style.display = 'block';
-  el.innerHTML = msg;
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-function clearAlerts() {
-  document.getElementById('alertErr').style.display = 'none';
-  document.getElementById('alertOk').style.display  = 'none';
-}
-
 // ── Generate ─────────────────────────────────────────────────────────────────
 document.getElementById('btnGenerate').addEventListener('click', async () => {
   const file = fileInput.files[0];
@@ -847,25 +957,28 @@ const fileInput = document.getElementById('fileInput');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  console.log('📥 File dropped');
+  e.preventDefault(); 
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) {
+    console.log('📁 Dropped file:', e.dataTransfer.files[0].name);
+    setFile(e.dataTransfer.files[0]);
+  }
 });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
 
-function setFile(f) {
-  document.getElementById('fileName').textContent = f.name;
-  document.getElementById('fileBadge').style.display = 'inline-flex';
-  log('info', `File selected: ${f.name} (${(f.size/1024).toFixed(1)} KB)`);
-}
+fileInput.addEventListener('change', (e) => { 
+  console.log('📄 File input changed');
+  if (e.target.files.length > 0) {
+    console.log('📁 File selected:', e.target.files[0].name);
+    setFile(e.target.files[0]);
+  }
+});
 
-function showProgress(message) {
-  document.getElementById('progressText').textContent = message;
-  document.getElementById('progressOverlay').style.display = 'flex';
-}
-
-function hideProgress() {
-  document.getElementById('progressOverlay').style.display = 'none';
-}
+// Browse button event handler
+document.getElementById('btnBrowseFiles').addEventListener('click', () => {
+  console.log('📁 Browse button clicked');
+  document.getElementById('fileInput').click();
+});
 
 function enhanceDropZone() {
   const dropZone = document.getElementById('dropZone');
@@ -968,109 +1081,6 @@ function log(type, msg) {
   panel.appendChild(line);
   panel.scrollTop = panel.scrollHeight;
 }
-
-// ── Progress ─────────────────────────────────────────────────────────────────
-function setProgress(pct, label) {
-  const wrap = document.getElementById('progressWrap');
-  wrap.style.display = 'block';
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = label;
-}
-
-// ── Alerts ───────────────────────────────────────────────────────────────────
-function showAlert(type, msg) {
-  const el = document.getElementById(type === 'err' ? 'alertErr' : 'alertOk');
-  el.style.display = 'block';
-  el.innerHTML = msg;
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-function clearAlerts() {
-  document.getElementById('alertErr').style.display = 'none';
-  document.getElementById('alertOk').style.display  = 'none';
-}
-
-// ── Generate ─────────────────────────────────────────────────────────────────
-document.getElementById('btnGenerate').addEventListener('click', async () => {
-  const file = fileInput.files[0];
-  if (!file) { showAlert('err', '⚠️ Please select an Excel file first.'); return; }
-
-  // Get configuration values
-  const numStudents = parseInt(document.getElementById('numStudents').value);
-  const questionsPerStudent = parseInt(document.getElementById('questionsPerStudent').value);
-  const questionStart = parseInt(document.getElementById('questionStart').value);
-  const questionEnd = parseInt(document.getElementById('questionEnd').value);
-  const shuffleMode = document.getElementById('shuffleMode').value;
-
-  // Validate configuration
-  if (questionStart > questionEnd) {
-    showAlert('err', '⚠️ Question start must be less than or equal to question end.');
-    return;
-  }
-
-  if (questionsPerStudent < 10 || questionsPerStudent > 20) {
-    showAlert('err', '⚠️ Questions per student must be between 10 and 20.');
-    return;
-  }
-
-  if (numStudents < 1 || numStudents > 50) {
-    showAlert('err', '⚠️ Number of students must be between 1 and 50.');
-    return;
-  }
-
-  clearAlerts();
-  document.getElementById('resultsCard').style.display = 'none';
-
-  const btn     = document.getElementById('btnGenerate');
-  const btnText = document.getElementById('btnText');
-  const spinner = document.getElementById('spinner');
-
-  btn.disabled  = true;
-  btnText.style.display = 'none';
-  spinner.style.display = 'block';
-
-  log('info', `Starting advanced upload: ${numStudents} students, ${questionsPerStudent} questions each, ${shuffleMode} shuffle`);
-  setProgress(10, 'Uploading Excel file…');
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('num_students', numStudents);
-    formData.append('questions_per_student', questionsPerStudent);
-    formData.append('question_start', questionStart);
-    formData.append('question_end', questionEnd);
-    formData.append('shuffle_mode', shuffleMode);
-
-    log('info', `POST ${API_BASE()}/upload-advanced`);
-    setProgress(30, 'FastAPI parsing and processing Excel…');
-
-    const resp = await fetch(`${API_BASE()}/upload-advanced`, { method:'POST', body: formData });
-    setProgress(60, 'Java service generating PDFs…');
-
-    const data = await resp.json();
-    log(resp.ok ? 'ok' : 'err', `HTTP ${resp.status} — ${JSON.stringify(data).slice(0,120)}`);
-
-    if (!resp.ok) {
-      throw new Error(data.detail || JSON.stringify(data));
-    }
-
-    setProgress(100, `Done! ${data.processedStudentCount} PDF(s) generated.`);
-    log('ok', `✅ ${data.processedStudentCount} PDF(s) saved to ${data.outputDirectory}`);
-    log('info', `Configuration: ${data.configuration.shuffle_mode} shuffle, ${data.originalStudentCount}→${data.processedStudentCount} students`);
-
-    showAlert('ok', `✅ <strong>${data.processedStudentCount} PDF(s) generated</strong> with advanced configuration and saved to <code>${data.outputDirectory}</code>`);
-
-    renderResults(data);
-
-  } catch (err) {
-    log('err', '❌ ' + err.message);
-    setProgress(0, 'Failed.');
-    showAlert('err', `❌ <strong>Error:</strong> ${err.message}`);
-  } finally {
-    btn.disabled  = false;
-    btnText.style.display = 'inline';
-    spinner.style.display = 'none';
-  }
-});
 
 // ── Render results ────────────────────────────────────────────────────────────
 function renderResults(data) {
@@ -1284,9 +1294,25 @@ function closePreview() {
 }
 
 // ── Reset ─────────────────────────────────────────────────────────────────────
-document.getElementById('btnReset').addEventListener('click', () => {
+// Clear file button
+document.getElementById('btnClearFile').addEventListener('click', () => {
+  clearFile();
+});
+
+function clearFile() {
+  currentFile = null;
+  fileAnalysis = null;
   fileInput.value = '';
   document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('fileStats').style.display = 'none';
+  document.getElementById('fileAnalysis').style.display = 'none';
+  document.getElementById('btnGenerate').disabled = true;
+  clearAlerts();
+  log('info', 'File cleared — ready for new upload.');
+}
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  clearFile();
   document.getElementById('logPanel').innerHTML = '';
   document.getElementById('logPanel').style.display = 'none';
   document.getElementById('progressWrap').style.display = 'none';
