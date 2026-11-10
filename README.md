@@ -15,7 +15,8 @@
 - Java 17+
 - Maven 3.6+
 - Docker Desktop
-- jio lala 
+- jio lala
+- Kafta, Microservices 
 
 #### Option 1: Automated Setup (Recommended)
 ```bash
