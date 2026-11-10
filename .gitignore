@@ -7,6 +7,7 @@ venv/
 *.egg-info/
 dist/
 build/
+#Python 2.0 
 
 # Java / Maven
 target/
