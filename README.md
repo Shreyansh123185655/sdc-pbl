@@ -14,9 +14,8 @@
 - Python 3.11+
 - Java 17+
 - Maven 3.6+
-- Docker Desktop (optional)
-
-### One-Command Installation
+- Docker Desktop
+- jio lala 
 
 #### Option 1: Automated Setup (Recommended)
 ```bash
